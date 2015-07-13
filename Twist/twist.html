@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script id="vertex-shader" type="x-shader/x-vertex">
+uniform vec4 centroid;
+uniform float theta;
+
+attribute vec4 vPosition;
+
+void main() {
+	float x2 = (vPosition.x - centroid.x) * (vPosition.x - centroid.x);
+	float y2 = (vPosition.y - centroid.y) * (vPosition.y - centroid.y);
+	float z2 = (vPosition.z - centroid.z) * (vPosition.z - centroid.z);
+	float d = sqrt(x2 + y2 + z2);
+
+	vec4 col1 = vec4(cos(d * theta), sin(d * theta), 0.0, 0.0);
+	vec4 col2 = vec4(-sin(d * theta), cos(d * theta), 0.0, 0.0);
+	vec4 col3 = vec4(0.0, 0.0, 0.0, 0.0);
+	vec4 col4 = vec4(0.0, 0.0, 0.0, 1.0);
+	mat4 rMatrix = mat4(col1, col2, col3, col4);
+
+    gl_Position = rMatrix * vPosition;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+precision mediump float;
+
+void main() {
+    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}
+</script>
+
+<script type="text/javascript" src="../Common/webgl-utils.js"></script>
+<script type="text/javascript" src="../Common/initShaders.js"></script>
+<script type="text/javascript" src="../Common/MV.js"></script>
+
+<script type="text/javascript" src="twist.js"></script>
+<script>
+	var demonstrator = null;
+	window.onload = function initDemonstrator() {
+		demonstrator = new Demonstrator();
+	};
+</script>
+</head>
+
+<body>
+<div>
+	Rotation Angle:
+	<input id="sliderTheta" type="range" 
+	min="0" 
+	max="3.14" 
+	step="0.01" 
+	onchange="onThetaChanged(this.value)" 
+	oninput="onThetaChanged(this.value)" />
+	<input id="boxTheta" type="text" />
+</div>
+<script>
+	var sliderTheta = document.getElementById("sliderTheta");
+	sliderTheta.value = 0.0;
+
+	var boxTheta = document.getElementById("boxTheta");
+	boxTheta.value = sliderTheta.value;
+
+	var onThetaChanged = function (value) {	
+		boxTheta.value = value;
+		demonstrator.onThetaChanged(value)
+	};
+</script>
+
+<div>
+	Subdivision Depth:
+	<input id="sliderDepth" 
+	type="range" 
+	min="0" 
+	max="7" 
+	step="1" 
+	onchange="onDepthChanged(this.value)" 
+	oninput="onDepthChanged(this.value)" />
+	<input id="boxDepth" type="text"/>
+	Show Tesselation: 
+	<input id="checkDepth" type="checkbox" onchange="onShowTesselationChanged(this.checked)">
+</div>
+<script>
+	var sliderDepth = document.getElementById("sliderDepth");
+	sliderDepth.value = 0;
+
+	var boxDepth = document.getElementById("boxDepth");
+	boxDepth.value = sliderDepth.value;
+
+	var onDepthChanged = function (value) {	
+		boxDepth.value = value;
+		demonstrator.onDepthChanged(value)
+	};
+
+	var onShowTesselationChanged = function (value) {	
+		demonstrator.onShowTesselationChanged(value)	
+	};
+</script>
+
+<div>
+	<canvas id="gl-canvas" width="512" height="512" style="border: solid">
+		Oops ... your browser doesn't support the HTML5 canvas element
+	</canvas>
+</div>
+
+<div>
+	Author: Andrii Bugaiov
+</div>
+
+</body>
+</html>
