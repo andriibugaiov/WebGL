@@ -128,6 +128,11 @@ var Demonstrator = function () {
     var loadAttributes = function (glctx, program, attributes) {
         var geometry = attributes.geometry;
 
+        if (this.bufferID) {
+            gl.deleteBuffer(this.bufferID);
+            this.bufferID = null;
+        }
+
         var bufferID = glctx.createBuffer();
         glctx.bindBuffer(glctx.ARRAY_BUFFER, bufferID);
         glctx.bufferData(glctx.ARRAY_BUFFER, geometry.vertices, glctx.STATIC_DRAW);
@@ -160,6 +165,7 @@ var Demonstrator = function () {
     this.data = null;
     this.gl = null;
     this.program = null;
+    this.bufferID = null;
 
     this.initDemonstrator = function () {
         var canvas = document.getElementById("gl-canvas");

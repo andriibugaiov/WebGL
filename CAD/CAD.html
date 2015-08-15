@@ -81,8 +81,6 @@ void main() {
 	var convert = function (event) {
 		var x = -1 + 2 * event.layerX / canvas.width;
 		var y = -1 + 2*(canvas.height - event.layerY)/canvas.height;
-		x = Math.min(Math.max(x, -1), 1);
-		y = Math.min(Math.max(y, -1), 1);
 		return vec2(x, y);
 	};
 
@@ -103,15 +101,13 @@ void main() {
 		}
 	});
 
-	canvas.addEventListener("mouseout", function (event) {
-		if (shouldTrack) {
-			shouldTrack = false;
-			if (demonstrator) {
-				var point = convert(event);
-				demonstrator.onPointTrackEnded(point);
-			}
-		}
-	});
+	// canvas.addEventListener("mouseout", function (event) {
+	// 	shouldTrack = false;
+	// 	if (demonstrator) {
+	// 		var point = convert(event);
+	// 		demonstrator.onPointTrackEnded(point);
+	// 	}
+	// });
 
 	canvas.addEventListener("mousemove", function (event) {
 		if (shouldTrack) {
@@ -122,6 +118,7 @@ void main() {
 			}
 		}
 	});
+	onPointTrackOut
 </script>
 
 <div>
