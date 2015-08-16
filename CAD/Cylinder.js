@@ -110,10 +110,7 @@ var Cylinder = function () {
         var uniforms = {
             position: vec3(0.0, 0.0, 0.0),
             scale: vec3(1.0, 1.0, 1.0),
-            rotation: {
-                axis: vec3(0.0, 1.0, 0.0),
-                angle: 0.0
-            },
+            rotation: vec3(0.0, 0.0, 0.0),
             matrix: null,
 
             // TEMP!

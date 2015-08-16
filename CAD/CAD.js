@@ -45,19 +45,23 @@ var Demonstrator = function () {
 
     var applyUniforms = function(shapeUniforms, uniforms) {
         // TODO! DEEP COPY!
-        shapeUniforms.position[0] = uniforms.position[0];
-        shapeUniforms.position[1] = uniforms.position[1];
-        shapeUniforms.position[2] = uniforms.position[2];
+        shapeUniforms.rotation[0] = uniforms.rotation[0];
+        shapeUniforms.rotation[1] = uniforms.rotation[1];
+        shapeUniforms.rotation[2] = uniforms.rotation[2];
 
         shapeUniforms.scale[0] = uniforms.scale[0];
         shapeUniforms.scale[1] = uniforms.scale[1];
         shapeUniforms.scale[2] = uniforms.scale[2];
 
-        shapeUniforms.rotation.axis[0] = uniforms.rotation.axis[0];
-        shapeUniforms.rotation.axis[1] = uniforms.rotation.axis[1];
-        shapeUniforms.rotation.axis[2] = uniforms.rotation.axis[2];
+        shapeUniforms.position[0] = uniforms.position[0];
+        shapeUniforms.position[1] = uniforms.position[1];
+        shapeUniforms.position[2] = uniforms.position[2];
 
-        shapeUniforms.rotation.angle = uniforms.rotation.angle;
+        // shapeUniforms.rotation.axis[0] = uniforms.rotation.axis[0];
+        // shapeUniforms.rotation.axis[1] = uniforms.rotation.axis[1];
+        // shapeUniforms.rotation.axis[2] = uniforms.rotation.axis[2];
+
+        // shapeUniforms.rotation.angle = uniforms.rotation.angle;
     };
 
     var generateVerteciesBuffer = function (vertecies) {
@@ -108,6 +112,12 @@ var Demonstrator = function () {
 
     // mark - 
 
+    var axes = {
+        "x": vec3(1.0, 0.0, 0.0),
+        "y": vec3(0.0, 1.0, 0.0),
+        "z": vec3(0.0, 0.0, 1.0)
+    };
+
     var updateUniforms = function (uniforms) {
         var t = uniforms.position;
         var tMatrix = translate(t);
@@ -116,10 +126,14 @@ var Demonstrator = function () {
         var sMatrix = scale(s);
 
         var r = uniforms.rotation;
-        var rMatrix = rotate(r.angle, r.axis);
+        var rxMatrix = rotate(r[0], axes["x"]);
+        var ryMatrix = rotate(r[1], axes["y"]);
+        var rzMatrix = rotate(r[2], axes["z"]);
 
         var tsMatrix = mult(tMatrix, sMatrix);
-        var tsrMatrix = mult(tsMatrix, rMatrix);
+        var tsrMatrix = mult(tsMatrix, rxMatrix);
+        tsrMatrix = mult(tsrMatrix, ryMatrix);
+        tsrMatrix = mult(tsrMatrix, rzMatrix);
 
         uniforms.matrix = tsrMatrix;
     };

@@ -52,6 +52,33 @@ void main() {
 	<input type="radio" name="shape" value="coneID">Cone
 	<input type="radio" name="shape" value="cylinderID">Cylinder
 </div>
+
+<div>
+	Rotation 'x':
+	<input id="rotX" type="range" 
+	min="-180" 
+	max="180" 
+	step="0.01" />
+	<input id="boxRotX" type="text" />
+</div>	
+<div>
+	Rotation 'y':
+	<input id="rotY" type="range" 
+	min="-180" 
+	max="180" 
+	step="0.01" />
+	<input id="boxRotY" type="text" />
+</div>	
+<div>
+	Rotation 'z':
+	<input id="rotZ" type="range" 
+	min="-180" 
+	max="180" 
+	step="0.01" />
+	<input id="boxRotZ" type="text" />
+</div>
+
+
 <div>
 	Scale:
 	<input id="scaleXYZ" type="range" 
@@ -85,7 +112,7 @@ void main() {
 	<input id="boxPosZ" type="text" />
 </div>
 
-<div>
+<!-- <div>
 	<div>
 		Rotation:
 		<input type="radio" name="axis" value="x" checked>'x'
@@ -101,7 +128,7 @@ void main() {
 		<input id="boxAngle" type="text" />
 	</div>
 </div>
-
+ -->
 <div>
 	<button id="add" type="button">Add Shape</button>
 </div>
@@ -160,51 +187,55 @@ void main() {
 
 // mark - rotation
 
-	var angle = document.getElementById("angle");
-	var boxAngle = document.getElementById("boxAngle");
-	boxAngle.value = angle.value = 0.0;
-	angle.addEventListener("change", function (event) {
-		boxAngle.value = event.target.value;
+	var rotX = document.getElementById("rotX");
+	var boxRotX = document.getElementById("boxRotX");
+	boxRotX.value = rotX.value = 0.0;
+	rotX.addEventListener("change", function (event) {
+		boxRotX.value = event.target.value;
 	});
-	angle.addEventListener("input", function (event) {
-		boxAngle.value = event.target.value;
+	rotX.addEventListener("input", function (event) {
+		boxRotX.value = event.target.value;
 	});
 
+	var rotY = document.getElementById("rotY");
+	var boxRotY = document.getElementById("boxRotY");
+	boxRotY.value = rotY.value = 0.0;
+	rotY.addEventListener("change", function (event) {
+		boxRotY.value = event.target.value;
+	});
+	rotY.addEventListener("input", function (event) {
+		boxRotY.value = event.target.value;
+	});
+
+	var rotZ = document.getElementById("rotZ");
+	var boxRotZ = document.getElementById("boxRotZ");
+	boxRotZ.value = rotZ.value = 0.0;
+	rotZ.addEventListener("change", function (event) {
+		boxRotZ.value = event.target.value;
+	});
+	rotZ.addEventListener("input", function (event) {
+		boxRotZ.value = event.target.value;
+	});
 
 // mark - add shape
 
 	var add = document.getElementById("add");
 	add.addEventListener("click", function (event) {
+		var xRot = Number(rotX.value);
+		var yRot = Number(rotY.value);
+		var zRot = Number(rotZ.value);
+
 		var s = Number(scaleXYZ.value);
 		
-		var x = Number(posX.value);
-		var y = Number(posY.value);
+		var xPos = Number(posX.value);
+		var yPos = Number(posY.value);
 		// TODO!
-		var z = -Number(posZ.value);
-
-		var a = Number(angle.value);
-		var axOptions = {
-			"x": vec3(1.0, 0.0, 0.0),
-			"y": vec3(0.0, 1.0, 0.0),
-			"z": vec3(0.0, 0.0, 1.0)
-		};
-		var ax = axOptions["x"];
-		var radiosAxis = document.getElementsByName("axis");
-		for(var i = 0; i < radiosAxis.length; ++i) {
-			var radio = radiosAxis[i];
-			if(radio.checked == true) {
-				ax = axOptions[radio.value];
-				break;
-		    }
-	    }
+		var zPos = -Number(posZ.value);
 
 		var uniforms = {
-            position: vec3(x, y, z),
-            scale: vec3(s, s, s),
-            rotation: {
-                axis: ax,
-                angle: a
-            }        
+			rotation: vec3(xRot, yRot, zRot),
+			scale: vec3(s, s, s),
+            position: vec3(xPos, yPos, zPos) 
         };
 
         var shapeID = null;
