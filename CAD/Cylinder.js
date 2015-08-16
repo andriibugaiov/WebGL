@@ -27,12 +27,12 @@ var Cylinder = function () {
             var v4 = vec3(xNext, yTop, zNext);
 
             vertecies.data.push(top);
-            vertecies.data.push(v3);
-
-            vertecies.data.push(v3);
             vertecies.data.push(v4);
 
             vertecies.data.push(v4);
+            vertecies.data.push(v3);
+
+            vertecies.data.push(v3);
             vertecies.data.push(top);
 
             // mark - 
