@@ -81,7 +81,7 @@ var Demonstrator = function () {
                 break;
             }
             case 'coneID': {
-                shape = null;
+                shape = new Cone();
                 break;
             }
             case 'cylinderID': {

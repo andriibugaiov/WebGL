@@ -1,6 +1,6 @@
 "use strict";
 
-var Sphere = function () {
+var Cone = function () {
     // mark - 
 
     var subdivide = function (v1, v2, v3, depth, vertecies) {
@@ -40,27 +40,48 @@ var Sphere = function () {
     };
 
     var generateVertecies = function (vertecies) {
-        var X  = 0.525731112119133606;
-        var Z = 0.850650808352039932;
+        var yTop  = 1.0;
+        var yBottom = -1.0;
+        var r = 1.0;
 
-        var vData /*[12][3]*/ = [
-            [-X, 0.0, Z], [X, 0.0, Z], [-X, 0.0, -Z], [X, 0.0, -Z],
-            [0.0, Z, X], [0.0, Z, -X], [0.0, -Z, X], [0.0, -Z, -X],
-            [Z, X, 0.0], [-Z, X, 0.0], [Z, -X, 0.0], [-Z, -X, 0.0]
-        ];
+        var top = vec3(0.0, yTop, 0.0);
+        var bottom = vec3(0.0, yBottom, 0.0);
+        
+        var depth = 100;
+        var delta = 2 * Math.PI / depth;
 
-        var tIndices /*[20][3]*/ = [
-            [4, 0, 1], [9, 0, 4], [5, 9, 4], [5, 4, 8], [8, 4, 1],
-            [10, 8, 1], [3, 8, 10], [3, 5, 8], [2, 5, 3], [7, 2, 3],
-            [10, 7, 3], [6, 7, 10], [11, 7, 6], [0, 11, 6], [1, 0, 6],
-            [1, 6, 10], [0, 9, 11], [11, 9, 2], [2, 9, 5], [2, 7, 11]
-        ];
+        var xCur = r;
+        var zCur = 0.0;
+        for (var i = 0; i < depth; ++i) {
+            var a = delta * (i + 1);
+            var xNext = Math.cos(a) * r;
+            var zNext = Math.sin(a) * r;
 
-        var depth = 4;
-        for (var i = 0; i < tIndices.length; ++i) {
-            subdivide(vData[tIndices[i][0]],
-                      vData[tIndices[i][1]],
-                      vData[tIndices[i][2]], depth, vertecies);
+            var v1 = vec3(xCur, yBottom, zCur);
+            var v2 = vec3(xNext, yBottom, zNext);
+
+            vertecies.data.push(top);
+            vertecies.data.push(v2);
+
+            vertecies.data.push(v2);
+            vertecies.data.push(v1);
+
+            vertecies.data.push(v1);
+            vertecies.data.push(top);
+
+            // mark - 
+
+            vertecies.data.push(bottom);
+            vertecies.data.push(v1);
+
+            vertecies.data.push(v1);
+            vertecies.data.push(v2);
+
+            vertecies.data.push(v2);
+            vertecies.data.push(bottom);
+
+            xCur = xNext;
+            zCur = zNext;
         }
     };
 
