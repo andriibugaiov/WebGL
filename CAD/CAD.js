@@ -41,140 +41,6 @@ var Demonstrator = function () {
 
 // ------------------
 
-
-    // mark - 
-
-    var subdivide = function (v1, v2, v3, depth, vertecies) {
-        if (depth == 0) {
-            vertecies.data.push(v1);
-            vertecies.data.push(v2);
-
-            vertecies.data.push(v2);
-            vertecies.data.push(v3);
-
-            vertecies.data.push(v3);
-            vertecies.data.push(v1);
-
-            // console.log(v1);
-            // console.log(v2);
-            // console.log(v3);
-            return;
-        }
-        
-        var v12 = [];
-        var v23 = [];
-        var v31 = [];
-        for (var i = 0; i < 3; ++i) {
-            v12.push(v1[i] + v2[i]);
-            v23.push(v2[i] + v3[i]);
-            v31.push(v3[i] + v1[i]);
-        }
-        
-        v12 = normalize(v12);
-        v23 = normalize(v23);
-        v31 = normalize(v31);
-        
-        subdivide(v1, v12, v31, depth - 1, vertecies);
-        subdivide(v2, v23, v12, depth - 1, vertecies);
-        subdivide(v3, v31, v23, depth - 1, vertecies);
-        subdivide(v12, v23, v31, depth - 1, vertecies);
-    };
-
-    var generateSphereVertecies = function (vertecies) {
-        var X  = 0.525731112119133606;
-        var Z = 0.850650808352039932;
-
-        var vData /*[12][3]*/ = [
-            [-X, 0.0, Z], [X, 0.0, Z], [-X, 0.0, -Z], [X, 0.0, -Z],
-            [0.0, Z, X], [0.0, Z, -X], [0.0, -Z, X], [0.0, -Z, -X],
-            [Z, X, 0.0], [-Z, X, 0.0], [Z, -X, 0.0], [-Z, -X, 0.0]
-        ];
-
-        var tIndices /*[20][3]*/ = [
-            [4, 0, 1], [9, 0, 4], [5, 9, 4], [5, 4, 8], [8, 4, 1],
-            [10, 8, 1], [3, 8, 10], [3, 5, 8], [2, 5, 3], [7, 2, 3],
-            [10, 7, 3], [6, 7, 10], [11, 7, 6], [0, 11, 6], [1, 0, 6],
-            [1, 6, 10], [0, 9, 11], [11, 9, 2], [2, 9, 5], [2, 7, 11]
-        ];
-
-        var depth = 4;
-        for (var i = 0; i < tIndices.length; ++i) {
-            subdivide(vData[tIndices[i][0]],
-                      vData[tIndices[i][1]],
-                      vData[tIndices[i][2]], depth, vertecies);
-        }
-    };
-
-    // mark - 
-
-    var generateSphereAttributes = function () {
-        var attributes = {
-            vertecies: {
-                bufferID: null,
-                data: []
-            },
-            // colors: {
-            //     bufferID: null,
-            //     data: []
-            // },
-
-            // TEMP!
-            wireFrame: false,
-            count: function () {
-                return this.wireFrame ? this.vertecies.data.length : this.vertecies.data.length / 2;
-            }, 
-            stride: function () {
-                return this.wireFrame ? 0 : 2 * sizeof["vec3"];
-            },
-            mode: function (glctx) {
-                return this.wireFrame ? glctx.LINES : glctx.TRIANGLES;
-            }
-        };
-
-        generateSphereVertecies.call(this, attributes.vertecies);
-        // TODO!
-        // generateSphereColors.call(this, attributes.colors);
-
-        return attributes;
-    };
-
-    var generateSphereUniforms = function () {
-        var uniforms = {
-            position: vec3(0.0, 0.0, 0.0),
-            scale: vec3(1.0, 1.0, 1.0),
-            rotation: {
-                axis: vec3(0.0, 1.0, 0.0),
-                angle: 0.0
-            },
-            matrix: null,
-
-            // TEMP!
-            wireFrame: false,
-            color: function () {
-                return this.wireFrame ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(1.0, 0.0, 0.0, 1.0);
-            }
-        };
-        return uniforms;
-    };
-
-    var generateSphere = function () {
-        var attributes = generateSphereAttributes.call(this);
-        var uniforms = generateSphereUniforms.call(this);
-        return {
-            attributes: attributes,
-            uniforms: uniforms,
-            setWireFrame: function(wireFrame) {
-                this.attributes.wireFrame = wireFrame;
-                this.uniforms.wireFrame = wireFrame;
-            }
-        };
-    };
-
-    // mark - 
-
-
-// ------------------
-
     // mark - 
 
     var applyUniforms = function(shapeUniforms, uniforms) {
@@ -194,8 +60,6 @@ var Demonstrator = function () {
         shapeUniforms.rotation.angle = uniforms.rotation.angle;
     };
 
-    // mark - 
-
     var generateVerteciesBuffer = function (vertecies) {
         var gl = this.gl;
 
@@ -213,7 +77,7 @@ var Demonstrator = function () {
         var shape = null;
         switch(shapeID) {
             case 'sphereID': {
-                shape = generateSphere.call(this);
+                shape = new Sphere();
                 break;
             }
             case 'coneID': {
@@ -227,10 +91,11 @@ var Demonstrator = function () {
         }
         
         if (shape) {
-            applyUniforms.call(this, shape.uniforms, uniforms);
-            generateVerteciesBuffer.call(this, shape.attributes.vertecies);
+            var info = shape.info;
+            applyUniforms.call(this, info.uniforms, uniforms);
+            generateVerteciesBuffer.call(this, info.attributes.vertecies);
             // TODO!
-            // generateColorsBuffer.call(this, shape.attributes.colors);
+            // generateColorsBuffer.call(this, info.attributes.colors);
         }
         return shape;
     };
@@ -299,12 +164,14 @@ var Demonstrator = function () {
     };
 
     var loadShape = function (program, shape) {
+        var info = shape.info;
+
         // attributes
-        var attributes = shape.attributes;
+        var attributes = info.attributes;
         loadAttributes.call(this, program, attributes);
 
         // uniforms
-        var uniforms = shape.uniforms;
+        var uniforms = info.uniforms;
         updateUniforms.call(this, uniforms);
         loadUniforms.call(this, program, uniforms);
     };
@@ -323,15 +190,15 @@ var Demonstrator = function () {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         for (var i = 0; i < shapes.length; ++i) {
             var shape = shapes[i];
-            var attributes = shape.attributes;
+            var info = shape.info;
 
-            shape.setWireFrame(false);
+            info.setWireFrame(false);
             loadShape.call(this, program, shape);
-            gl.drawArrays(attributes.mode(gl), 0, attributes.count());
+            gl.drawArrays(info.attributes.mode(gl), 0, info.attributes.count());
 
-            shape.setWireFrame(true);
+            shape.info.setWireFrame(true);
             loadShape.call(this, program, shape);
-            gl.drawArrays(attributes.mode(gl), 0, attributes.count());
+            gl.drawArrays(info.attributes.mode(gl), 0, info.attributes.count());
         }
     }
 
@@ -362,37 +229,6 @@ var Demonstrator = function () {
     this.initDemonstrator.call(this);
 
     // mark - 
-
-    this.test = function () {
-        var uniforms0 = {
-            position: vec3(0.0, 0.5, -0.5),
-            scale: vec3(0.5, 0.5, 0.5),
-            rotation: {
-                axis: vec3(1.0, 0.0, 0.0),
-                angle: 0.0
-            }        
-        };
-        var uniforms1 = {
-            position: vec3(0.0, 0.0, 0.5),
-            scale: vec3(0.5, 0.5, 0.5),
-            rotation: {
-                axis: vec3(1.0, 0.0, 0.0),
-                angle: 0.0
-            }        
-        };
-        var u = [uniforms0, uniforms1];
-
-        for (var i = 0; i < u.length; ++i) {
-            var uniforms = u[i];
-            var shape = generateShape.call(this, 'sphereID', uniforms);
-            if (shape) {
-                this.shapes.push(shape);
-            }
-        }
-
-        render.call(this, this.program, this.shapes);
-    };
-    // this.test.call(this);
 
     this.addShape = function (shapeID, uniforms) {
         var shape = generateShape.call(this, shapeID, uniforms);

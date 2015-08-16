@@ -32,6 +32,7 @@ void main() {
 <script type="text/javascript" src="../Common/initShaders.js"></script>
 <script type="text/javascript" src="../Common/MV.js"></script>
 
+<script type="text/javascript" src="Sphere.js"></script>
 <script type="text/javascript" src="CAD.js"></script>
 <script>
 	var demonstrator = null;
@@ -173,30 +174,24 @@ void main() {
 	var add = document.getElementById("add");
 	add.addEventListener("click", function (event) {
 		var s = Number(scaleXYZ.value);
+		
 		var x = Number(posX.value);
 		var y = Number(posY.value);
-		var z = Number(posZ.value);
+		// TODO!
+		var z = -Number(posZ.value);
 
 		var a = Number(angle.value);
-	 	var ax =  vec3(1.0, 0.0, 0.0);
+		var axOptions = {
+			"x": vec3(1.0, 0.0, 0.0),
+			"y": vec3(0.0, 1.0, 0.0),
+			"z": vec3(0.0, 0.0, 1.0)
+		};
+		var ax = axOptions["x"];
 		var radiosAxis = document.getElementsByName("axis");
 		for(var i = 0; i < radiosAxis.length; ++i) {
 			var radio = radiosAxis[i];
 			if(radio.checked == true) {
-				switch (radio.value) {
-					case "x": {
-						ax =  vec3(1.0, 0.0, 0.0);
-						break;
-					}
-					case "y": {
-						ax =  vec3(0.0, 1.0, 0.0);
-						break;
-					}
-					case "z": {
-						ax =  vec3(0.0, 0.0, 1.0);
-						break;
-					}
-				}
+				ax = axOptions[radio.value];
 				break;
 		    }
 	    }
