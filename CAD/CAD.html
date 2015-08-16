@@ -82,7 +82,22 @@ void main() {
 	<input id="boxPosZ" type="text" />
 </div>
 
-<!-- ... -->
+<div>
+	<div>
+		Rotation:
+		<input type="radio" name="axis" value="x" checked>'x'
+		<input type="radio" name="axis" value="y">'y'
+		<input type="radio" name="axis" value="z">'z'
+	</div>
+	<div>
+		Angle:
+		<input id="angle" type="range" 
+		min="-180" 
+		max="180" 
+		step="0.01" />
+		<input id="boxAngle" type="text" />
+	</div>
+</div>
 
 <div>
 	<button id="add" type="button">Add Shape</button>
@@ -142,7 +157,16 @@ void main() {
 
 // mark - rotation
 
-	// ...
+	var angle = document.getElementById("angle");
+	var boxAngle = document.getElementById("boxAngle");
+	boxAngle.value = angle.value = 0.0;
+	angle.addEventListener("change", function (event) {
+		boxAngle.value = event.target.value;
+	});
+	angle.addEventListener("input", function (event) {
+		boxAngle.value = event.target.value;
+	});
+
 
 // mark - add shape
 
@@ -152,19 +176,44 @@ void main() {
 		var x = Number(posX.value);
 		var y = Number(posY.value);
 		var z = Number(posZ.value);
+
+		var a = Number(angle.value);
+	 	var ax =  vec3(1.0, 0.0, 0.0);
+		var radiosAxis = document.getElementsByName("axis");
+		for(var i = 0; i < radiosAxis.length; ++i) {
+			var radio = radiosAxis[i];
+			if(radio.checked == true) {
+				switch (radio.value) {
+					case "x": {
+						ax =  vec3(1.0, 0.0, 0.0);
+						break;
+					}
+					case "y": {
+						ax =  vec3(0.0, 1.0, 0.0);
+						break;
+					}
+					case "z": {
+						ax =  vec3(0.0, 0.0, 1.0);
+						break;
+					}
+				}
+				break;
+		    }
+	    }
+
 		var uniforms = {
             position: vec3(x, y, z),
             scale: vec3(s, s, s),
             rotation: {
-                axis: vec3(0.0, 1.0, 0.0),
-                angle: 45
+                axis: ax,
+                angle: a
             }        
         };
 
         var shapeID = null;
-		var radios = document.getElementsByName("shape");
-		for(var i = 0; i < radios.length; ++i) {
-			var radio = radios[i];
+		var radiosShape = document.getElementsByName("shape");
+		for(var i = 0; i < radiosShape.length; ++i) {
+			var radio = radiosShape[i];
 			if(radio.checked == true) {
 				shapeID = radio.value;
 				break;
