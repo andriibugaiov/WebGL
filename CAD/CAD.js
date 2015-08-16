@@ -18,8 +18,10 @@ var Demonstrator = function () {
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
 
         gl.enable(gl.DEPTH_TEST);
-        // gl.depthFunc(gl.LEQUAL);
+        gl.depthFunc(gl.LEQUAL);
 
+        // TODO!
+        gl.frontFace(gl.CW);
         gl.enable(gl.CULL_FACE);
         gl.cullFace(gl.BACK);
     };
@@ -51,7 +53,11 @@ var Demonstrator = function () {
             vertecies.data.push(v3);
 
             vertecies.data.push(v3);
-            vertecies.data.push(v1);            
+            vertecies.data.push(v1);
+
+            // console.log(v1);
+            // console.log(v2);
+            // console.log(v3);
             return;
         }
         
@@ -91,7 +97,7 @@ var Demonstrator = function () {
             [1, 6, 10], [0, 9, 11], [11, 9, 2], [2, 9, 5], [2, 7, 11]
         ];
 
-        var depth = 1;
+        var depth = 4;
         for (var i = 0; i < tIndices.length; ++i) {
             subdivide(vData[tIndices[i][0]],
                       vData[tIndices[i][1]],
@@ -137,7 +143,7 @@ var Demonstrator = function () {
             position: vec3(0.0, 0.0, 0.0),
             scale: vec3(1.0, 1.0, 1.0),
             rotation: {
-                axis: vec3(0.0, 0.0, 0.0),
+                axis: vec3(0.0, 1.0, 0.0),
                 angle: 0.0
             },
             matrix: null,
@@ -263,6 +269,13 @@ var Demonstrator = function () {
 
         var colorID = gl.getUniformLocation(program, "color");
         var color = uniforms.color();
+
+        // TEMP!
+        if (!uniforms.wireFrame) {
+            var scale = uniforms.scale;
+            color[0] = scale[0] + 2.5;
+        }
+
         gl.uniform4f(colorID, color[0], color[1], color[2], color[3]);
     };
 
