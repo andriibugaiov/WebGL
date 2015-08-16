@@ -18,7 +18,7 @@ var Demonstrator = function () {
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
 
         gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LEQUAL);
+        // gl.depthFunc(gl.LEQUAL);
 
         gl.enable(gl.CULL_FACE);
         gl.cullFace(gl.BACK);
@@ -72,7 +72,7 @@ var Demonstrator = function () {
         subdivide(v2, v23, v12, depth - 1, vertecies);
         subdivide(v3, v31, v23, depth - 1, vertecies);
         subdivide(v12, v23, v31, depth - 1, vertecies);
-    }
+    };
 
     var generateSphereVertecies = function (vertecies) {
         var X  = 0.525731112119133606;
@@ -234,6 +234,7 @@ var Demonstrator = function () {
 
 // ------------------
 
+
     // mark - 
 
     var updateUniforms = function (uniforms) {
@@ -378,5 +379,13 @@ var Demonstrator = function () {
 
         render.call(this, this.program, this.shapes);
     };
-    this.test.call(this);
+    // this.test.call(this);
+
+    this.addShape = function (shapeID, uniforms) {
+        var shape = generateShape.call(this, shapeID, uniforms);
+        if (shape) {
+            this.shapes.push(shape);
+            render.call(this, this.program, this.shapes);
+        }
+    };
 };

@@ -42,9 +42,52 @@ void main() {
 </head>
 
 <body>
+<div>
+<div>
+	Shape:
+	<input type="radio" name="shape" value="sphereID" checked>Sphere
+	<input type="radio" name="shape" value="coneID">Cone
+	<input type="radio" name="shape" value="cylinderID">Cylinder
+</div>
+<div>
+	Scale:
+	<input id="scaleXYZ" type="range" 
+	min="0.0" 
+	max="1.0" 
+	step="0.01" />
+	<input id="boxScale" type="text" />
+</div>
+<div>
+	Position 'x':
+	<input id="posX" type="range" 
+	min="-1.0" 
+	max="1.0" 
+	step="0.01" />
+	<input id="boxPosX" type="text" />
+</div>	
+<div>
+	Position 'y':
+	<input id="posY" type="range" 
+	min="-1.0" 
+	max="1.0" 
+	step="0.01" />
+	<input id="boxPosY" type="text" />
+</div>	
+<div>
+	Position 'z':
+	<input id="posZ" type="range" 
+	min="-1.0" 
+	max="1.0" 
+	step="0.01" />
+	<input id="boxPosZ" type="text" />
+</div>
 
-<script>
-</script>
+<!-- ... -->
+
+<div>
+	<button id="add" type="button">Add Shape</button>
+</div>
+</div>
 
 <div>
 	<canvas id="gl-canvas" width="512" height="512" style="border: solid">
@@ -53,6 +96,82 @@ void main() {
 </div>
 
 <script>
+// mark - scale	
+
+	var scaleXYZ = document.getElementById("scaleXYZ");
+	var boxScale = document.getElementById("boxScale");
+	boxScale.value = scale.value = 0.5;
+	scaleXYZ.addEventListener("change", function (event) {
+		boxScale.value = event.target.value;
+	});
+	scaleXYZ.addEventListener("input", function (event) {
+		boxScale.value = event.target.value;
+	});
+
+// mark - position
+
+	var posX = document.getElementById("posX");
+	var boxPosX = document.getElementById("boxPosX");
+	boxPosX.value = posX.value = 0.0;
+	posX.addEventListener("change", function (event) {
+		boxPosX.value = event.target.value;
+	});
+	posX.addEventListener("input", function (event) {
+		boxPosX.value = event.target.value;
+	});
+
+	var posY = document.getElementById("posY");
+	var boxPosY = document.getElementById("boxPosY");
+	boxPosY.value = posY.value = 0.0;
+	posY.addEventListener("change", function (event) {
+		boxPosY.value = event.target.value;
+	});
+	posY.addEventListener("input", function (event) {
+		boxPosY.value = event.target.value;
+	});
+
+	var posZ = document.getElementById("posZ");
+	var boxPosZ = document.getElementById("boxPosZ");
+	boxPosZ.value = posZ.value = 0.0;
+	posZ.addEventListener("change", function (event) {
+		boxPosZ.value = event.target.value;
+	});
+	posZ.addEventListener("input", function (event) {
+		boxPosZ.value = event.target.value;
+	});
+
+// mark - rotation
+
+
+	var add = document.getElementById("add");
+	add.addEventListener("click", function (event) {
+		var s = Number(scaleXYZ.value);
+		var x = Number(posX.value);
+		var y = Number(posY.value);
+		var z = Number(posZ.value);
+		var uniforms = {
+            position: vec3(x, y, z),
+            scale: vec3(s, s, s),
+            rotation: {
+                axis: vec3(1.0, 0.0, 0.0),
+                angle: 0.0
+            }        
+        };
+
+        var shapeID = null;
+		var radios = document.getElementsByName("shape");
+		for(var i = 0; i < radios.length; ++i) {
+			var radio = radios[i];
+			if(radio.checked == true) {
+				shapeID = radio.value;
+				break;
+		    }
+	    }
+
+	    if (demonstrator && shapeID) {
+	    	demonstrator.addShape(shapeID, uniforms);
+	    }
+	});
 </script>
 
 <div>
