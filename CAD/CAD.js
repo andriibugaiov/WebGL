@@ -1,238 +1,382 @@
 "use strict";
 
 var Demonstrator = function () {
+    // mark - 
+
     var setupWebGL = function (canvas) {
-        var glctx = WebGLUtils.setupWebGL( canvas );
-        if ( !glctx ) { 
-            alert( "WebGL isn't available" ); 
+        var gl = WebGLUtils.setupWebGL(canvas);
+        if ( !gl ) { 
+            alert("WebGL isn't available"); 
         } else {
-            configureWebGL(glctx, canvas);
+            configureWebGL(gl, canvas);
         }
-        return glctx;
+        return gl;
     };
 
-    var configureWebGL = function (glctx, canvas) { 
-        glctx.viewport(0, 0, canvas.width, canvas.height);
-        glctx.clearColor(1.0, 1.0, 1.0, 1.0 );
+    var configureWebGL = function (gl, canvas) { 
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+
+        gl.enable(gl.CULL_FACE);
+        gl.cullFace(gl.BACK);
     };
 
     // mark - 
 
-    var loadShaders = function (glctx) {
-        var program = initShaders( glctx, "vertex-shader", "fragment-shader" );
-        glctx.useProgram(program);
+    var loadShaders = function () {
+        var gl = this.gl;
+
+        var program = initShaders(gl, "vertex-shader", "fragment-shader");
+        gl.useProgram(program);
         return program;
     };
 
     // mark - 
 
-    var generateGeometry = function () {
-        var vertices = [];
-        var colors = [];
 
-        var count = 0;
-        var capacity = 100000;
-        for (var i = 0; i < capacity; ++i) {
-            vertices.push(vec2(0, 0));
-            colors.push(vec3(0, 0, 0));
+// ------------------
+
+
+    // mark - 
+
+    var subdivide = function (v1, v2, v3, depth, vertecies) {
+        if (depth == 0) {
+            vertecies.data.push(v1);
+            vertecies.data.push(v2);
+
+            vertecies.data.push(v2);
+            vertecies.data.push(v3);
+
+            vertecies.data.push(v3);
+            vertecies.data.push(v1);            
+            return;
         }
+        
+        var v12 = [];
+        var v23 = [];
+        var v31 = [];
+        for (var i = 0; i < 3; ++i) {
+            v12.push(v1[i] + v2[i]);
+            v23.push(v2[i] + v3[i]);
+            v31.push(v3[i] + v1[i]);
+        }
+        
+        v12 = normalize(v12);
+        v23 = normalize(v23);
+        v31 = normalize(v31);
+        
+        subdivide(v1, v12, v31, depth - 1, vertecies);
+        subdivide(v2, v23, v12, depth - 1, vertecies);
+        subdivide(v3, v31, v23, depth - 1, vertecies);
+        subdivide(v12, v23, v31, depth - 1, vertecies);
+    }
 
-        return {
-            vertices: vertices,
-            colors: colors,
-            dimension: function (id) {
-                if (id === 'v') {
-                    return 2;
-                } else if (id === 'c') {
-                    return 3;
-                }
-                console.log('Error!');
-                return 0;
-            },
-            capacity: capacity,
-            count: count,
-            evenCount: function () {
-                return Math.floor(0.5 * this.count) * 2;
-            }
-        };
+    var generateSphereVertecies = function (vertecies) {
+        var X  = 0.525731112119133606;
+        var Z = 0.850650808352039932;
+
+        var vData /*[12][3]*/ = [
+            [-X, 0.0, Z], [X, 0.0, Z], [-X, 0.0, -Z], [X, 0.0, -Z],
+            [0.0, Z, X], [0.0, Z, -X], [0.0, -Z, X], [0.0, -Z, -X],
+            [Z, X, 0.0], [-Z, X, 0.0], [Z, -X, 0.0], [-Z, -X, 0.0]
+        ];
+
+        var tIndices /*[20][3]*/ = [
+            [4, 0, 1], [9, 0, 4], [5, 9, 4], [5, 4, 8], [8, 4, 1],
+            [10, 8, 1], [3, 8, 10], [3, 5, 8], [2, 5, 3], [7, 2, 3],
+            [10, 7, 3], [6, 7, 10], [11, 7, 6], [0, 11, 6], [1, 0, 6],
+            [1, 6, 10], [0, 9, 11], [11, 9, 2], [2, 9, 5], [2, 7, 11]
+        ];
+
+        var depth = 1;
+        for (var i = 0; i < tIndices.length; ++i) {
+            subdivide(vData[tIndices[i][0]],
+                      vData[tIndices[i][1]],
+                      vData[tIndices[i][2]], depth, vertecies);
+        }
     };
 
-    var generateAttributes = function () {
-        var geometry = generateGeometry.call(this);
+    // mark - 
+
+    var generateSphereAttributes = function () {
         var attributes = {
-            geometry: geometry
+            vertecies: {
+                bufferID: null,
+                data: []
+            },
+            // colors: {
+            //     bufferID: null,
+            //     data: []
+            // },
+
+            // TEMP!
+            wireFrame: false,
+            count: function () {
+                return this.wireFrame ? this.vertecies.data.length : this.vertecies.data.length / 2;
+            }, 
+            stride: function () {
+                return this.wireFrame ? 0 : 2 * sizeof["vec3"];
+            },
+            mode: function (glctx) {
+                return this.wireFrame ? glctx.LINES : glctx.TRIANGLES;
+            }
         };
+
+        generateSphereVertecies.call(this, attributes.vertecies);
+        // TODO!
+        // generateSphereColors.call(this, attributes.colors);
+
         return attributes;
     };
 
-    var generateUniforms = function () {
+    var generateSphereUniforms = function () {
         var uniforms = {
+            position: vec3(0.0, 0.0, 0.0),
+            scale: vec3(1.0, 1.0, 1.0),
+            rotation: {
+                axis: vec3(0.0, 0.0, 0.0),
+                angle: 0.0
+            },
+            matrix: null,
+
+            // TEMP!
+            wireFrame: false,
+            color: function () {
+                return this.wireFrame ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(1.0, 0.0, 0.0, 1.0);
+            }
         };
         return uniforms;
     };
 
-    var generateData = function () {
+    var generateSphere = function () {
+        var attributes = generateSphereAttributes.call(this);
+        var uniforms = generateSphereUniforms.call(this);
         return {
-            attributes: generateAttributes.call(this),
-            uniforms: generateUniforms.call(this)
+            attributes: attributes,
+            uniforms: uniforms,
+            setWireFrame: function(wireFrame) {
+                this.attributes.wireFrame = wireFrame;
+                this.uniforms.wireFrame = wireFrame;
+            }
         };
     };
 
     // mark - 
 
-    var loadUniforms = function (glctx, program, uniforms) {
+
+// ------------------
+
+    // mark - 
+
+    var applyUniforms = function(shapeUniforms, uniforms) {
+        // TODO! DEEP COPY!
+        shapeUniforms.position[0] = uniforms.position[0];
+        shapeUniforms.position[1] = uniforms.position[1];
+        shapeUniforms.position[2] = uniforms.position[2];
+
+        shapeUniforms.scale[0] = uniforms.scale[0];
+        shapeUniforms.scale[1] = uniforms.scale[1];
+        shapeUniforms.scale[2] = uniforms.scale[2];
+
+        shapeUniforms.rotation.axis[0] = uniforms.rotation.axis[0];
+        shapeUniforms.rotation.axis[1] = uniforms.rotation.axis[1];
+        shapeUniforms.rotation.axis[2] = uniforms.rotation.axis[2];
+
+        shapeUniforms.rotation.angle = uniforms.rotation.angle;
     };
 
-    var loadAttributes = function (glctx, program, attributes) {
-        var geometry = attributes.geometry;
+    // mark - 
 
-        var vBufferID = glctx.createBuffer();
-        glctx.bindBuffer(glctx.ARRAY_BUFFER, vBufferID);
-        glctx.bufferData(glctx.ARRAY_BUFFER, flatten(geometry.vertices), glctx.STATIC_DRAW);
-        this.vBufferID = vBufferID;
+    var generateVerteciesBuffer = function (vertecies) {
+        var gl = this.gl;
 
-        var vPositionID = glctx.getAttribLocation(program, "vPosition");
-        glctx.vertexAttribPointer(vPositionID, geometry.dimension('v'), glctx.FLOAT, false, 0, 0);
-        glctx.enableVertexAttribArray(vPositionID);
+        var bufferID = gl.createBuffer();
+        vertecies.bufferID = bufferID;
 
-        var cBufferID = glctx.createBuffer();
-        glctx.bindBuffer(glctx.ARRAY_BUFFER, cBufferID);
-        glctx.bufferData(glctx.ARRAY_BUFFER, flatten(geometry.colors), glctx.STATIC_DRAW);
-        this.cBufferID = cBufferID;
-
-        var vColorID = glctx.getAttribLocation(program, "vColor");
-        glctx.vertexAttribPointer(vColorID, geometry.dimension('c'), glctx.FLOAT, false, 0, 0);
-        glctx.enableVertexAttribArray(vColorID);
+        gl.bindBuffer(gl.ARRAY_BUFFER, bufferID);
+        gl.bufferData(gl.ARRAY_BUFFER, flatten(vertecies.data), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
     };
 
-    var loadData = function (glctx, program, data) {
-        // uniforms
-        var uniforms = data.uniforms;
-        loadUniforms(glctx, program, uniforms);
+    // mark - 
 
-        // attributes
-        var attributes = data.attributes;
-        loadAttributes.call(this, glctx, program, attributes);
+    var generateShape = function (shapeID, uniforms) {
+        var shape = null;
+        switch(shapeID) {
+            case 'sphereID': {
+                shape = generateSphere.call(this);
+                break;
+            }
+            case 'coneID': {
+                shape = null;
+                break;
+            }
+            case 'cylinderID': {
+                shape = null;
+                break;
+            }
+        }
+        
+        if (shape) {
+            applyUniforms.call(this, shape.uniforms, uniforms);
+            generateVerteciesBuffer.call(this, shape.attributes.vertecies);
+            // TODO!
+            // generateColorsBuffer.call(this, shape.attributes.colors);
+        }
+        return shape;
+    };
+
+    // mark - 
+
+
+// ------------------
+
+    // mark - 
+
+    var updateUniforms = function (uniforms) {
+        var t = uniforms.position;
+        var tMatrix = translate(t);
+
+        var s = uniforms.scale;
+        var sMatrix = scale(s);
+
+        var r = uniforms.rotation;
+        var rMatrix = rotate(r.angle, r.axis);
+
+        var tsMatrix = mult(tMatrix, sMatrix);
+        var tsrMatrix = mult(tsMatrix, rMatrix);
+
+        uniforms.matrix = tsrMatrix;
     };
 
     // mark -
 
-    function render(glctx, data) {
-        glctx.clear(glctx.COLOR_BUFFER_BIT);
-        
-        var geometry = data.attributes.geometry;
-        var mode = glctx.LINES;
-        glctx.drawArrays(mode, 0, geometry.evenCount());
+    var loadUniforms = function (program, uniforms) {
+        var gl = this.gl;
+
+        var matrixID = gl.getUniformLocation(program, "matrix");
+        gl.uniformMatrix4fv(matrixID, false, flatten(uniforms.matrix));
+
+        var colorID = gl.getUniformLocation(program, "color");
+        var color = uniforms.color();
+        gl.uniform4f(colorID, color[0], color[1], color[2], color[3]);
+    };
+
+    var loadAttributes = function (program, attributes) {
+        var gl = this.gl;
+
+        var bufferID = attributes.vertecies.bufferID;
+        gl.bindBuffer(gl.ARRAY_BUFFER, bufferID);
+
+        var vPositionID = gl.getAttribLocation(program, "vPosition");
+        gl.vertexAttribPointer(vPositionID, 3, gl.FLOAT, false, attributes.stride(), 0);
+        gl.enableVertexAttribArray(vPositionID);
+
+        // TODO!
+        // var bufferID = attributes.colors.bufferID;
+        // gl.bindBuffer(gl.ARRAY_BUFFER, bufferID);
+
+        // var vColorID = glctx.getAttribLocation(program, "vColor");
+        // gl.vertexAttribPointer(vColorID, 3, glctx.FLOAT, false, 0, 0);
+        // gl.enableVertexAttribArray(vColorID);
+    };
+
+    var loadShape = function (program, shape) {
+        // attributes
+        var attributes = shape.attributes;
+        loadAttributes.call(this, program, attributes);
+
+        // uniforms
+        var uniforms = shape.uniforms;
+        updateUniforms.call(this, uniforms);
+        loadUniforms.call(this, program, uniforms);
+    };
+
+    // mark -
+
+
+// ------------------
+
+
+    // mark -
+
+    function render(program, shapes) {
+        var gl = this.gl;
+
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        for (var i = 0; i < shapes.length; ++i) {
+            var shape = shapes[i];
+            var attributes = shape.attributes;
+
+            shape.setWireFrame(false);
+            loadShape.call(this, program, shape);
+            gl.drawArrays(attributes.mode(gl), 0, attributes.count());
+
+            shape.setWireFrame(true);
+            loadShape.call(this, program, shape);
+            gl.drawArrays(attributes.mode(gl), 0, attributes.count());
+        }
     }
 
     // mark - 
 
-    this.data = null;
+
+// ------------------
+
+    // mark - 
+
     this.gl = null;
     this.program = null;
-
-    this.vBufferID = null;
-    this.cBufferID = null;
-
-    this.color = vec3(0, 0, 0);
+    this.shapes = [];
 
     this.initDemonstrator = function () {
         var canvas = document.getElementById("gl-canvas");
 
         //  Configure WebGL
         var gl = setupWebGL.call(this, canvas);
+        this.gl = gl;
 
         //  Load shaders and initialize attribute buffers
-        var program = loadShaders.call(this, gl);
-
-        // Load the data into the GPU
-        var data = generateData.call(this);
-        loadData.call(this, gl, program, data);
-
-        render.call(this, gl, data);
-
-        this.gl = gl;
+        var program = loadShaders.call(this);
         this.program = program;
-        this.data = data;
+
+        render.call(this, this.program, this.shapes);
     };
     this.initDemonstrator.call(this);
 
-    this.onPointTrackStarted = function (point) {
-        var tColor = this.color;
+    // mark - 
 
-        if (this.data) {
-            var geometry = this.data.attributes.geometry;
-            var count = geometry.count;
-            var capacity = geometry.capacity;
-            if (count < capacity && this.vBufferID && this.cBufferID) {
-                if (geometry.evenCount() < geometry.count) {
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vBufferID);
-                    this.gl.bufferSubData(this.gl.ARRAY_BUFFER, sizeof['vec2'] * count, flatten(point));
-                    this.gl.bufferSubData(this.gl.ARRAY_BUFFER, sizeof['vec2'] * (count + 1), flatten(point));
-                    
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cBufferID);
-                    this.gl.bufferSubData(this.gl.ARRAY_BUFFER, sizeof['vec3'] * count, flatten(tColor));
-                    this.gl.bufferSubData(this.gl.ARRAY_BUFFER, sizeof['vec3'] * (count + 1), flatten(tColor));
+    this.test = function () {
+        var uniforms0 = {
+            position: vec3(0.0, 0.5, -0.5),
+            scale: vec3(0.5, 0.5, 0.5),
+            rotation: {
+                axis: vec3(1.0, 0.0, 0.0),
+                angle: 0.0
+            }        
+        };
+        var uniforms1 = {
+            position: vec3(0.0, 0.0, 0.5),
+            scale: vec3(0.5, 0.5, 0.5),
+            rotation: {
+                axis: vec3(1.0, 0.0, 0.0),
+                angle: 0.0
+            }        
+        };
+        var u = [uniforms0, uniforms1];
 
-                    geometry.count += 2;
-                } else {
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vBufferID);
-                    this.gl.bufferSubData(this.gl.ARRAY_BUFFER, sizeof['vec2'] * count, flatten(point));
-                    
-                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cBufferID);
-                    this.gl.bufferSubData(this.gl.ARRAY_BUFFER, sizeof['vec3'] * count, flatten(tColor));
-
-                    geometry.count += 1;
-                }
+        for (var i = 0; i < u.length; ++i) {
+            var uniforms = u[i];
+            var shape = generateShape.call(this, 'sphereID', uniforms);
+            if (shape) {
+                this.shapes.push(shape);
             }
         }
+
+        render.call(this, this.program, this.shapes);
     };
-
-    this.onPointTrackEnded = function (point) {
-        var tColor = this.color;
-
-        if (this.data) {
-            var geometry = this.data.attributes.geometry;
-            var count = geometry.count;
-            var capacity = geometry.capacity;
-            if (count < capacity && this.vBufferID && this.cBufferID) {
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vBufferID);
-                this.gl.bufferSubData(this.gl.ARRAY_BUFFER, sizeof['vec2'] * count, flatten(point));
-
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cBufferID);
-                this.gl.bufferSubData(this.gl.ARRAY_BUFFER, sizeof['vec3'] * count, flatten(tColor));
-
-                geometry.count += 1;
-
-                render.call(this, this.gl, this.data);
-            }
-        }
-    };
-
-    this.onPointTracked = function (point) {
-        var tColor = this.color;
-        
-        if (this.data) {
-            var geometry = this.data.attributes.geometry;
-            var count = geometry.count;
-            var capacity = geometry.capacity;
-            if (count < capacity && this.vBufferID && this.cBufferID) {
-                var points = [point, point];
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vBufferID);
-                this.gl.bufferSubData(this.gl.ARRAY_BUFFER, sizeof['vec2'] * count, flatten(points));
-
-                var colors = [tColor, tColor];
-                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cBufferID);
-                this.gl.bufferSubData(this.gl.ARRAY_BUFFER, sizeof['vec3'] * count, flatten(colors));
-
-                geometry.count += 2;
-
-                render.call(this, this.gl, this.data);
-            }
-        }
-    };
-
-    this.onColorSelected = function (color) {
-        this.color = color;
-    };
+    this.test.call(this);
 };
