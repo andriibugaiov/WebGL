@@ -1,6 +1,6 @@
 "use strict";
 
-var Cone = function () {
+var Cylinder = function () {
     // mark - 
 
     var generateVertecies = function (vertecies) {
@@ -23,15 +23,39 @@ var Cone = function () {
 
             var v1 = vec3(xCur, yBottom, zCur);
             var v2 = vec3(xNext, yBottom, zNext);
+            var v3 = vec3(xCur, yTop, zCur);
+            var v4 = vec3(xNext, yTop, zNext);
 
             vertecies.data.push(top);
+            vertecies.data.push(v3);
+
+            vertecies.data.push(v3);
+            vertecies.data.push(v4);
+
+            vertecies.data.push(v4);
+            vertecies.data.push(top);
+
+            // mark - 
+
+            vertecies.data.push(v4);
+            vertecies.data.push(v2);
+
+            vertecies.data.push(v2);
+            vertecies.data.push(v3);
+
+            vertecies.data.push(v3);
+            vertecies.data.push(v4);
+
+            // mark - 
+
+            vertecies.data.push(v3);
             vertecies.data.push(v2);
 
             vertecies.data.push(v2);
             vertecies.data.push(v1);
 
             vertecies.data.push(v1);
-            vertecies.data.push(top);
+            vertecies.data.push(v3);
 
             // mark - 
 

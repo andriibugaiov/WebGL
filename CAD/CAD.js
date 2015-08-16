@@ -85,7 +85,7 @@ var Demonstrator = function () {
                 break;
             }
             case 'cylinderID': {
-                shape = null;
+                shape = new Cylinder();
                 break;
             }
         }
