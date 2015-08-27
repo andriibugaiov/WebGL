@@ -1,19 +1,50 @@
 "use strict";
 
-var Demonstrator = function () {
+var Demonstrator = (function () {
+
+    var Demonstrator = function () {
+        this.gl = null;
+        this.program = null;
+        this.shapes = [];
+        
+        pm.initDemonstrator.call(this);
+    };
+    Demonstrator.prototype.addShape = function (shapeID, uniforms) {
+        var shape = pm.generateShape.call(this, shapeID, uniforms);
+        if (shape) {
+            this.shapes.push(shape);
+            pm.render.call(this, this.program, this.shapes);
+        }
+    };
+
+    var pm = Object.create(Demonstrator.prototype);
+    pm.initDemonstrator = function () {
+        var canvas = document.getElementById("gl-canvas");
+
+        //  Configure WebGL
+        var gl = pm.setupWebGL.call(this, canvas);
+        this.gl = gl;
+
+        //  Load shaders and initialize attribute buffers
+        var program = pm.loadShaders.call(this);
+        this.program = program;
+
+        pm.render.call(this, this.program, this.shapes);
+    };
+    
     // mark - 
 
-    var setupWebGL = function (canvas) {
+    pm.setupWebGL = function (canvas) {
         var gl = WebGLUtils.setupWebGL(canvas);
         if ( !gl ) { 
             alert("WebGL isn't available"); 
         } else {
-            configureWebGL(gl, canvas);
+            pm.configureWebGL(gl, canvas);
         }
         return gl;
     };
 
-    var configureWebGL = function (gl, canvas) { 
+    pm.configureWebGL = function (gl, canvas) { 
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
 
@@ -28,7 +59,7 @@ var Demonstrator = function () {
 
     // mark - 
 
-    var loadShaders = function () {
+    pm.loadShaders = function () {
         var gl = this.gl;
 
         var program = initShaders(gl, "vertex-shader", "fragment-shader");
@@ -41,30 +72,16 @@ var Demonstrator = function () {
 
 // ------------------
 
+
     // mark - 
 
-    var applyUniforms = function(shapeUniforms, uniforms) {
-        // TODO! DEEP COPY!
-        shapeUniforms.rotation[0] = uniforms.rotation[0];
-        shapeUniforms.rotation[1] = uniforms.rotation[1];
-        shapeUniforms.rotation[2] = uniforms.rotation[2];
-
-        shapeUniforms.scale[0] = uniforms.scale[0];
-        shapeUniforms.scale[1] = uniforms.scale[1];
-        shapeUniforms.scale[2] = uniforms.scale[2];
-
-        shapeUniforms.position[0] = uniforms.position[0];
-        shapeUniforms.position[1] = uniforms.position[1];
-        shapeUniforms.position[2] = uniforms.position[2];
-
-        // shapeUniforms.rotation.axis[0] = uniforms.rotation.axis[0];
-        // shapeUniforms.rotation.axis[1] = uniforms.rotation.axis[1];
-        // shapeUniforms.rotation.axis[2] = uniforms.rotation.axis[2];
-
-        // shapeUniforms.rotation.angle = uniforms.rotation.angle;
+    pm.applyUniforms = function(shapeUniforms, uniforms) {
+        shapeUniforms.rotation = uniforms.rotation.slice();
+        shapeUniforms.scale = uniforms.scale.slice();
+        shapeUniforms.position = uniforms.position.slice();
     };
 
-    var generateVerteciesBuffer = function (vertecies) {
+    pm.generateVerteciesBuffer = function (vertecies) {
         var gl = this.gl;
 
         var bufferID = gl.createBuffer();
@@ -77,7 +94,7 @@ var Demonstrator = function () {
 
     // mark - 
 
-    var generateShape = function (shapeID, uniforms) {
+    pm.generateShape = function (shapeID, uniforms) {
         var shape = null;
         switch(shapeID) {
             case 'sphereID': {
@@ -96,10 +113,8 @@ var Demonstrator = function () {
         
         if (shape) {
             var info = shape.info;
-            applyUniforms.call(this, info.uniforms, uniforms);
-            generateVerteciesBuffer.call(this, info.attributes.vertecies);
-            // TODO!
-            // generateColorsBuffer.call(this, info.attributes.colors);
+            pm.applyUniforms.call(this, info.uniforms, uniforms);
+            pm.generateVerteciesBuffer.call(this, info.attributes.vertecies);
         }
         return shape;
     };
@@ -118,7 +133,7 @@ var Demonstrator = function () {
         "z": vec3(0.0, 0.0, 1.0)
     };
 
-    var updateUniforms = function (uniforms) {
+    pm.updateUniforms = function (uniforms) {
         var t = uniforms.position;
         var tMatrix = translate(t);
 
@@ -135,12 +150,16 @@ var Demonstrator = function () {
         tsrMatrix = mult(tsrMatrix, ryMatrix);
         tsrMatrix = mult(tsrMatrix, rzMatrix);
 
+        // TEMP!
+        // var pMatrix = perspective(45, 1, 0, 1);
+        // tsrMatrix = mult(pMatrix, tsrMatrix);
+
         uniforms.matrix = tsrMatrix;
     };
 
     // mark -
 
-    var loadUniforms = function (program, uniforms) {
+    pm.loadUniforms = function (program, uniforms) {
         var gl = this.gl;
 
         var matrixID = gl.getUniformLocation(program, "matrix");
@@ -148,17 +167,10 @@ var Demonstrator = function () {
 
         var colorID = gl.getUniformLocation(program, "color");
         var color = uniforms.color();
-
-        // TEMP!
-        if (!uniforms.wireFrame) {
-            var scale = uniforms.scale;
-            color[0] = scale[0] + 2.5;
-        }
-
         gl.uniform4f(colorID, color[0], color[1], color[2], color[3]);
     };
 
-    var loadAttributes = function (program, attributes) {
+    pm.loadAttributes = function (program, attributes) {
         var gl = this.gl;
 
         var bufferID = attributes.vertecies.bufferID;
@@ -167,27 +179,19 @@ var Demonstrator = function () {
         var vPositionID = gl.getAttribLocation(program, "vPosition");
         gl.vertexAttribPointer(vPositionID, 3, gl.FLOAT, false, attributes.stride(), 0);
         gl.enableVertexAttribArray(vPositionID);
-
-        // TODO!
-        // var bufferID = attributes.colors.bufferID;
-        // gl.bindBuffer(gl.ARRAY_BUFFER, bufferID);
-
-        // var vColorID = glctx.getAttribLocation(program, "vColor");
-        // gl.vertexAttribPointer(vColorID, 3, glctx.FLOAT, false, 0, 0);
-        // gl.enableVertexAttribArray(vColorID);
     };
 
-    var loadShape = function (program, shape) {
+    pm.loadShape = function (program, shape) {
         var info = shape.info;
 
         // attributes
         var attributes = info.attributes;
-        loadAttributes.call(this, program, attributes);
+        pm.loadAttributes.call(this, program, attributes);
 
         // uniforms
         var uniforms = info.uniforms;
-        updateUniforms.call(this, uniforms);
-        loadUniforms.call(this, program, uniforms);
+        pm.updateUniforms.call(this, uniforms);
+        pm.loadUniforms.call(this, program, uniforms);
     };
 
     // mark -
@@ -198,7 +202,7 @@ var Demonstrator = function () {
 
     // mark -
 
-    function render(program, shapes) {
+    pm.render = function (program, shapes) {
         var gl = this.gl;
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -207,48 +211,16 @@ var Demonstrator = function () {
             var info = shape.info;
 
             info.setWireFrame(false);
-            loadShape.call(this, program, shape);
+            pm.loadShape.call(this, program, shape);
             gl.drawArrays(info.attributes.mode(gl), 0, info.attributes.count());
 
             shape.info.setWireFrame(true);
-            loadShape.call(this, program, shape);
+            pm.loadShape.call(this, program, shape);
             gl.drawArrays(info.attributes.mode(gl), 0, info.attributes.count());
         }
-    }
-
-    // mark - 
-
-
-// ------------------
-
-    // mark - 
-
-    this.gl = null;
-    this.program = null;
-    this.shapes = [];
-
-    this.initDemonstrator = function () {
-        var canvas = document.getElementById("gl-canvas");
-
-        //  Configure WebGL
-        var gl = setupWebGL.call(this, canvas);
-        this.gl = gl;
-
-        //  Load shaders and initialize attribute buffers
-        var program = loadShaders.call(this);
-        this.program = program;
-
-        render.call(this, this.program, this.shapes);
     };
-    this.initDemonstrator.call(this);
 
     // mark - 
 
-    this.addShape = function (shapeID, uniforms) {
-        var shape = generateShape.call(this, shapeID, uniforms);
-        if (shape) {
-            this.shapes.push(shape);
-            render.call(this, this.program, this.shapes);
-        }
-    };
-};
+    return Demonstrator;
+})();

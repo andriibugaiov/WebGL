@@ -32,10 +32,21 @@ void main() {
 <script type="text/javascript" src="../Common/initShaders.js"></script>
 <script type="text/javascript" src="../Common/MV.js"></script>
 
+<script>
+	var inherit = function (childObject, parentObject) {
+	    var copyOfParent = Object.create(parentObject.prototype);
+
+	    copyOfParent.constructor = childObject;
+	    childObject.prototype = copyOfParent;
+  	};
+</script>
+
+<script type="text/javascript" src="Shape.js"></script>
 <script type="text/javascript" src="Sphere.js"></script>
 <script type="text/javascript" src="Cone.js"></script>
 <script type="text/javascript" src="Cylinder.js"></script>
 <script type="text/javascript" src="CAD.js"></script>
+
 <script>
 	var demonstrator = null;
 	window.onload = function initDemonstrator() {
@@ -112,23 +123,6 @@ void main() {
 	<input id="boxPosZ" type="text" />
 </div>
 
-<!-- <div>
-	<div>
-		Rotation:
-		<input type="radio" name="axis" value="x" checked>'x'
-		<input type="radio" name="axis" value="y">'y'
-		<input type="radio" name="axis" value="z">'z'
-	</div>
-	<div>
-		Angle:
-		<input id="angle" type="range" 
-		min="-180" 
-		max="180" 
-		step="0.01" />
-		<input id="boxAngle" type="text" />
-	</div>
-</div>
- -->
 <div>
 	<button id="add" type="button">Add Shape</button>
 </div>
