@@ -2,19 +2,17 @@
 <html>
 <head>
 <script id="vertex-shader" type="x-shader/x-vertex">
-uniform mat4 matrix;
-uniform vec4 color;
+uniform mat4 pMatrix;
+uniform mat4 mvMatrix;
 
 attribute vec3 vPosition;
-// attribute vec4 vColor;
 
+uniform vec4 color;
 varying vec4 fColor;
 
 void main() {
-    gl_Position = matrix * vec4(vPosition, 1.0);
-    
+    gl_Position = pMatrix * mvMatrix * vec4(vPosition, 1.0);
     fColor = color;
-    // fColor = vColor;
 }
 </script>
 
@@ -41,10 +39,14 @@ void main() {
   	};
 </script>
 
-<script type="text/javascript" src="Shape.js"></script>
-<script type="text/javascript" src="Sphere.js"></script>
-<script type="text/javascript" src="Cone.js"></script>
-<script type="text/javascript" src="Cylinder.js"></script>
+<script type="text/javascript" src="Object3D.js"></script>
+<script type="text/javascript" src="Camera.js"></script>
+
+<script type="text/javascript" src="Geometry.js"></script>
+<script type="text/javascript" src="Geometry/SphereGeometry.js"></script>
+<script type="text/javascript" src="Geometry/ConeGeometry.js"></script>
+<script type="text/javascript" src="Geometry/CylinderGeometry.js"></script>
+
 <script type="text/javascript" src="CAD.js"></script>
 
 <script>
@@ -218,13 +220,10 @@ void main() {
 		var xRot = Number(rotX.value);
 		var yRot = Number(rotY.value);
 		var zRot = Number(rotZ.value);
-
 		var s = Number(scaleXYZ.value);
-		
 		var xPos = Number(posX.value);
 		var yPos = Number(posY.value);
-		// TODO!
-		var zPos = -Number(posZ.value);
+		var zPos = Number(posZ.value);
 
 		var uniforms = {
 			rotation: vec3(xRot, yRot, zRot),

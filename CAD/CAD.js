@@ -5,15 +5,18 @@ var Demonstrator = (function () {
     var Demonstrator = function () {
         this.gl = null;
         this.program = null;
-        this.shapes = [];
+
+        this.camera = null;
+        this.scene = null;
         
         pm.initDemonstrator.call(this);
     };
+
     Demonstrator.prototype.addShape = function (shapeID, uniforms) {
-        var shape = pm.generateShape.call(this, shapeID, uniforms);
-        if (shape) {
-            this.shapes.push(shape);
-            pm.render.call(this, this.program, this.shapes);
+        var mesh = pm.generateMesh.call(this, shapeID, uniforms);
+        if (mesh) {
+            this.scene.push(mesh);
+            pm.render.call(this, this.scene, this.camera);
         }
     };
 
@@ -21,15 +24,33 @@ var Demonstrator = (function () {
     pm.initDemonstrator = function () {
         var canvas = document.getElementById("gl-canvas");
 
-        //  Configure WebGL
+        // TODO:
         var gl = pm.setupWebGL.call(this, canvas);
         this.gl = gl;
-
-        //  Load shaders and initialize attribute buffers
-        var program = pm.loadShaders.call(this);
+        var program = pm.loadShaders.call(this, gl);
         this.program = program;
 
-        pm.render.call(this, this.program, this.shapes);
+
+        // TODO:
+        this.scene = [];
+        this.camera = new Camera();
+
+        var xRot = 0.0;
+        var yRot = 0.0;
+        var zRot = 0.0;
+        var s = 1.0;
+        var xPos = -0.0;
+        var yPos = 0.0;
+        var zPos = -1.0;
+
+        var uniforms = {
+            rotation: vec3(xRot, yRot, zRot),
+            scale: vec3(s, s, s),
+            position: vec3(xPos, yPos, zPos) 
+        };
+
+        var cameraInfo = this.camera.info;
+        pm.applyUniforms.call(this, cameraInfo.uniforms, uniforms);
     };
     
     // mark - 
@@ -51,17 +72,12 @@ var Demonstrator = (function () {
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
 
-        // TODO!
-        gl.frontFace(gl.CW);
+        gl.frontFace(gl.CCW);
         gl.enable(gl.CULL_FACE);
         gl.cullFace(gl.BACK);
     };
 
-    // mark - 
-
-    pm.loadShaders = function () {
-        var gl = this.gl;
-
+    pm.loadShaders = function (gl) {
         var program = initShaders(gl, "vertex-shader", "fragment-shader");
         gl.useProgram(program);
         return program;
@@ -75,10 +91,10 @@ var Demonstrator = (function () {
 
     // mark - 
 
-    pm.applyUniforms = function(shapeUniforms, uniforms) {
-        shapeUniforms.rotation = uniforms.rotation.slice();
-        shapeUniforms.scale = uniforms.scale.slice();
-        shapeUniforms.position = uniforms.position.slice();
+    pm.applyUniforms = function(toUniforms, fromUniforms) {
+        toUniforms.rotation = fromUniforms.rotation.slice();
+        toUniforms.scale = fromUniforms.scale.slice();
+        toUniforms.position = fromUniforms.position.slice();
     };
 
     pm.generateVerteciesBuffer = function (vertecies) {
@@ -94,29 +110,30 @@ var Demonstrator = (function () {
 
     // mark - 
 
-    pm.generateShape = function (shapeID, uniforms) {
-        var shape = null;
+    pm.generateMesh = function (shapeID, uniforms) {
+        var mesh = null;
+        // TODO:
         switch(shapeID) {
             case 'sphereID': {
-                shape = new Sphere();
+                mesh = new SphereGeometry();
                 break;
             }
             case 'coneID': {
-                shape = new Cone();
+                mesh = new ConeGeometry();
                 break;
             }
             case 'cylinderID': {
-                shape = new Cylinder();
+                mesh = new CylinderGeometry();
                 break;
             }
         }
         
-        if (shape) {
-            var info = shape.info;
-            pm.applyUniforms.call(this, info.uniforms, uniforms);
-            pm.generateVerteciesBuffer.call(this, info.attributes.vertecies);
+        if (mesh) {
+            var meshInfo = mesh.info;
+            pm.applyUniforms.call(this, meshInfo.uniforms, uniforms);
+            pm.generateVerteciesBuffer.call(this, meshInfo.attributes.vertecies);
         }
-        return shape;
+        return mesh;
     };
 
     // mark - 
@@ -127,46 +144,40 @@ var Demonstrator = (function () {
 
     // mark - 
 
-    var axes = {
-        "x": vec3(1.0, 0.0, 0.0),
-        "y": vec3(0.0, 1.0, 0.0),
-        "z": vec3(0.0, 0.0, 1.0)
-    };
-
-    pm.updateUniforms = function (uniforms) {
+    pm.matrixFromUniforms = function (uniforms) {
         var t = uniforms.position;
-        var tMatrix = translate(t);
+        var tMatrix = translate(t);        
 
         var s = uniforms.scale;
-        var sMatrix = scale(s);
+        var sMatrix = scalem(s);
 
         var r = uniforms.rotation;
-        var rxMatrix = rotate(r[0], axes["x"]);
-        var ryMatrix = rotate(r[1], axes["y"]);
-        var rzMatrix = rotate(r[2], axes["z"]);
+        var rxMatrix = rotateX(r[0]);
+        var ryMatrix = rotateY(r[1]);
+        var rzMatrix = rotateZ(r[2]);
+        var rzyxMatrix = mult(rzMatrix, ryMatrix);
+        var rzyxMatrix = mult(rzyxMatrix, rxMatrix);
 
         var tsMatrix = mult(tMatrix, sMatrix);
-        var tsrMatrix = mult(tsMatrix, rxMatrix);
-        tsrMatrix = mult(tsrMatrix, ryMatrix);
-        tsrMatrix = mult(tsrMatrix, rzMatrix);
-
-        // TEMP!
-        // var pMatrix = perspective(45, 1, 0, 1);
-        // tsrMatrix = mult(pMatrix, tsrMatrix);
-
-        uniforms.matrix = tsrMatrix;
+        var matrix = mult(tsMatrix, rzyxMatrix);
+        return matrix;
     };
 
     // mark -
 
-    pm.loadUniforms = function (program, uniforms) {
+    pm.loadUniforms = function (program, meshUniforms, cameraUniforms) {
         var gl = this.gl;
 
-        var matrixID = gl.getUniformLocation(program, "matrix");
-        gl.uniformMatrix4fv(matrixID, false, flatten(uniforms.matrix));
+        var mvMatrixID = gl.getUniformLocation(program, "mvMatrix");
+        gl.uniformMatrix4fv(mvMatrixID, false, flatten(meshUniforms.mvMatrix));
 
+        // TODO:
+        var pMatrixID = gl.getUniformLocation(program, "pMatrix");
+        gl.uniformMatrix4fv(pMatrixID, false, flatten(cameraUniforms.pMatrix));
+
+        // TODO:
         var colorID = gl.getUniformLocation(program, "color");
-        var color = uniforms.color();
+        var color = vec4(1.0, 0.0, 0.0, 1.0);
         gl.uniform4f(colorID, color[0], color[1], color[2], color[3]);
     };
 
@@ -181,17 +192,27 @@ var Demonstrator = (function () {
         gl.enableVertexAttribArray(vPositionID);
     };
 
-    pm.loadShape = function (program, shape) {
-        var info = shape.info;
+    pm.loadMesh = function (mesh, camera) {
+        // TODO:
+        var program = this.program;
+
+        var meshInfo = mesh.info;
+        var meshUniforms = meshInfo.uniforms;
+        meshUniforms.mvMatrix = pm.matrixFromUniforms(meshUniforms);
+
+        var cameraInfo = camera.info;
+        var cameraUniforms = cameraInfo.uniforms;
 
         // attributes
-        var attributes = info.attributes;
+        var attributes = meshInfo.attributes;
         pm.loadAttributes.call(this, program, attributes);
 
         // uniforms
-        var uniforms = info.uniforms;
-        pm.updateUniforms.call(this, uniforms);
-        pm.loadUniforms.call(this, program, uniforms);
+        var vMatrix = cameraUniforms.mvMatrix;
+        var mMatrix = meshUniforms.mvMatrix
+        meshUniforms.mvMatrix = mult(vMatrix, mMatrix);
+
+        pm.loadUniforms.call(this, program, meshUniforms, cameraUniforms);
     };
 
     // mark -
@@ -202,21 +223,21 @@ var Demonstrator = (function () {
 
     // mark -
 
-    pm.render = function (program, shapes) {
+    pm.render = function (scene, camera) {
         var gl = this.gl;
-
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        for (var i = 0; i < shapes.length; ++i) {
-            var shape = shapes[i];
-            var info = shape.info;
 
-            info.setWireFrame(false);
-            pm.loadShape.call(this, program, shape);
-            gl.drawArrays(info.attributes.mode(gl), 0, info.attributes.count());
+        var cameraInfo = camera.info;
+        var cameraUniforms = cameraInfo.uniforms;
+        cameraUniforms.mvMatrix = pm.matrixFromUniforms(cameraUniforms);
 
-            shape.info.setWireFrame(true);
-            pm.loadShape.call(this, program, shape);
-            gl.drawArrays(info.attributes.mode(gl), 0, info.attributes.count());
+        for (var i = 0; i < scene.length; ++i) {
+            var mesh = scene[i];
+            pm.loadMesh.call(this, mesh, camera);
+
+            // TODO:
+            var meshInfo = mesh.info;
+            gl.drawArrays(gl.TRIANGLES, 0, meshInfo.attributes.count());
         }
     };
 

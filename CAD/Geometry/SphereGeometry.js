@@ -1,6 +1,6 @@
 "use strict";
 
-var Sphere = (function () {
+var SphereGeometry = (function () {
     var X  = 0.525731112119133606;
     var Z = 0.850650808352039932;
 
@@ -17,31 +17,30 @@ var Sphere = (function () {
         [1, 6, 10], [0, 9, 11], [11, 9, 2], [2, 9, 5], [2, 7, 11]
     ];
 
-    var Sphere = function () {
-        Shape.call(this);
+    var SphereGeometry = function () {
+        Geometry.call(this);
     };
-    inherit(Sphere, Shape);
-    Sphere.prototype.generateVertecies = function (vertecies) {
+    inherit(SphereGeometry, Geometry);
+    
+    SphereGeometry.prototype.generateVertecies = function () {
+        var data = [];
         var depth = 3;
         for (var i = 0; i < tIndices.length; ++i) {
             pm.subdivide(vData[tIndices[i][0]],
                          vData[tIndices[i][1]],
-                         vData[tIndices[i][2]], depth, vertecies);
+                         vData[tIndices[i][2]], depth, data);
         }
+        return data;
     };
 
-    var pm = Object.create(Sphere.prototype);
-    pm.subdivide = function (v1, v2, v3, depth, vertecies) {
+    var pm = Object.create(SphereGeometry.prototype);
+    pm.subdivide = function (v1, v2, v3, depth, data) {
         if (depth == 0) {
-            vertecies.data.push(v1);
-            vertecies.data.push(v2);
+            data.push(v1);
+            data.push(v2);
+            data.push(v3);
 
-            vertecies.data.push(v2);
-            vertecies.data.push(v3);
-
-            vertecies.data.push(v3);
-            vertecies.data.push(v1);
-
+            // console.log("***");
             // console.log(v1);
             // console.log(v2);
             // console.log(v3);
@@ -61,11 +60,11 @@ var Sphere = (function () {
         v23 = normalize(v23);
         v31 = normalize(v31);
         
-        pm.subdivide(v1, v12, v31, depth - 1, vertecies);
-        pm.subdivide(v2, v23, v12, depth - 1, vertecies);
-        pm.subdivide(v3, v31, v23, depth - 1, vertecies);
-        pm.subdivide(v12, v23, v31, depth - 1, vertecies);
+        pm.subdivide(v1, v12, v31, depth - 1, data);
+        pm.subdivide(v2, v23, v12, depth - 1, data);
+        pm.subdivide(v3, v31, v23, depth - 1, data);
+        pm.subdivide(v12, v23, v31, depth - 1, data);
     };
 
-    return Sphere;
+    return SphereGeometry;
 })();
