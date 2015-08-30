@@ -15,7 +15,7 @@ var Demonstrator = (function () {
     Demonstrator.prototype.addShape = function (shapeID, uniforms) {
         var mesh = pm.generateMesh.call(this, shapeID, uniforms);
         if (mesh) {
-            this.scene.push(mesh);
+            this.scene.objects.push(mesh);
             pm.render.call(this, this.scene, this.camera);
         }
     };
@@ -32,7 +32,7 @@ var Demonstrator = (function () {
 
 
         // TODO:
-        this.scene = [];
+        this.scene = new Scene();
         this.camera = new Camera();
 
         var xRot = 0.0;
@@ -112,18 +112,17 @@ var Demonstrator = (function () {
 
     pm.generateMesh = function (shapeID, uniforms) {
         var mesh = null;
-        // TODO:
         switch(shapeID) {
             case 'sphereID': {
-                mesh = new SphereGeometry();
+                mesh = new Mesh(new SphereGeometry(), null);
                 break;
             }
             case 'coneID': {
-                mesh = new ConeGeometry();
+                mesh = new Mesh(new ConeGeometry(), null);
                 break;
             }
             case 'cylinderID': {
-                mesh = new CylinderGeometry();
+                mesh = new Mesh(new CylinderGeometry(), null);
                 break;
             }
         }
@@ -231,8 +230,8 @@ var Demonstrator = (function () {
         var cameraUniforms = cameraInfo.uniforms;
         cameraUniforms.mvMatrix = pm.matrixFromUniforms(cameraUniforms);
 
-        for (var i = 0; i < scene.length; ++i) {
-            var mesh = scene[i];
+        for (var i = 0; i < scene.objects.length; ++i) {
+            var mesh = scene.objects[i];
             pm.loadMesh.call(this, mesh, camera);
 
             // TODO:

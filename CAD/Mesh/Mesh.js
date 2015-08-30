@@ -1,19 +1,19 @@
 
-var Geometry = (function () {
+var Mesh = (function () {
 
-	var Geometry = function () {
+	var Mesh = function (geometry, material) {
+        this.geometry = geometry;
+        this.material = material;
+        
 		Object3D.call(this);
 	};
-	inherit(Geometry, Object3D);
+	inherit(Mesh, Object3D);
 
-	Object3D.prototype.generateVertecies = function () {
-		return [];
-    };
-	Geometry.prototype.generateAttributes = function () {
+	Mesh.prototype.generateAttributes = function () {
         var attributes = {
             vertecies: {
                 bufferID: null,
-                data: this.generateVertecies.call(this)
+                data: this.geometry.generateVertecies()
             },
             count: function () {
                 return this.vertecies.data.length;
@@ -25,8 +25,8 @@ var Geometry = (function () {
         return attributes;
     };
 
-	var pm = Object.create(Geometry.prototype);
+	var pm = Object.create(Mesh.prototype);
 	// ...
 
-	return Geometry;
+	return Mesh;
 })();
