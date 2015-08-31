@@ -22,23 +22,36 @@ var SphereGeometry = (function () {
     };
     inherit(SphereGeometry, Geometry);
     
-    SphereGeometry.prototype.generateVertecies = function () {
-        var data = [];
-        var depth = 3;
+    SphereGeometry.prototype.generateVerticesData = function () {
+        var vertices = [];
+        var normals = [];
+        var depth = 4;
         for (var i = 0; i < tIndices.length; ++i) {
             pm.subdivide(vData[tIndices[i][0]],
                          vData[tIndices[i][1]],
-                         vData[tIndices[i][2]], depth, data);
+                         vData[tIndices[i][2]], depth, vertices, normals);
         }
-        return data;
+        return {
+            vertices: vertices,
+            normals: normals
+        };
     };
 
     var pm = Object.create(SphereGeometry.prototype);
-    pm.subdivide = function (v1, v2, v3, depth, data) {
+    pm.subdivide = function (v1, v2, v3, depth, vertices, normals) {
         if (depth == 0) {
-            data.push(v1);
-            data.push(v2);
-            data.push(v3);
+            vertices.push(v1);
+            vertices.push(v2);
+            vertices.push(v3);
+
+            var n = normalize(cross(subtract(v3, v2), subtract(v1, v2)));
+            normals.push(n);
+            normals.push(n);
+            normals.push(n);
+
+            // normals.push(v1);
+            // normals.push(v2);
+            // normals.push(v3);
 
             // console.log("***");
             // console.log(v1);
@@ -60,10 +73,10 @@ var SphereGeometry = (function () {
         v23 = normalize(v23);
         v31 = normalize(v31);
         
-        pm.subdivide(v1, v12, v31, depth - 1, data);
-        pm.subdivide(v2, v23, v12, depth - 1, data);
-        pm.subdivide(v3, v31, v23, depth - 1, data);
-        pm.subdivide(v12, v23, v31, depth - 1, data);
+        pm.subdivide(v1, v12, v31, depth - 1, vertices, normals);
+        pm.subdivide(v2, v23, v12, depth - 1, vertices, normals);
+        pm.subdivide(v3, v31, v23, depth - 1, vertices, normals);
+        pm.subdivide(v12, v23, v31, depth - 1, vertices, normals);
     };
 
     return SphereGeometry;

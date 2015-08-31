@@ -12,8 +12,5 @@ var Camera = (function () {
         return uniforms;
     };
 
-	var pm = Object.create(Camera.prototype);
-	// ...
-
 	return Camera;
 })();

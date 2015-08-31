@@ -4,19 +4,30 @@ var Mesh = (function () {
 	var Mesh = function (geometry, material) {
         this.geometry = geometry;
         this.material = material;
-        
+
 		Object3D.call(this);
 	};
 	inherit(Mesh, Object3D);
 
+    Mesh.prototype.generateUniforms = function () {
+        var uniforms = Object3D.prototype.generateUniforms.call(this);
+        return uniforms;
+    };
+
 	Mesh.prototype.generateAttributes = function () {
+        var verticesData = this.geometry.generateVerticesData()
+
         var attributes = {
-            vertecies: {
+            vertices: {
                 bufferID: null,
-                data: this.geometry.generateVertecies()
+                data: verticesData.vertices
+            },
+            normals: {
+                bufferID: null,
+                data: verticesData.normals
             },
             count: function () {
-                return this.vertecies.data.length;
+                return this.vertices.data.length;
             }, 
             stride: function () {
                 return 0;
@@ -24,9 +35,6 @@ var Mesh = (function () {
         };
         return attributes;
     };
-
-	var pm = Object.create(Mesh.prototype);
-	// ...
 
 	return Mesh;
 })();

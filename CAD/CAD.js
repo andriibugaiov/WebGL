@@ -27,30 +27,69 @@ var Demonstrator = (function () {
         // TODO:
         var gl = pm.setupWebGL.call(this, canvas);
         this.gl = gl;
+
+        // TODO:
         var program = pm.loadShaders.call(this, gl);
         this.program = program;
 
+        pm.initGraphics.call(this);
+    };
+
+    pm.initGraphics = function () {
+        // scene
+        this.scene = new Scene();
+
+        // light
+        var light = new Light();
+        this.scene.light = light;
+
+        var lightInfo = light.info;
+        var lightUniforms = lightInfo.uniforms;
 
         // TODO:
-        this.scene = new Scene();
-        this.camera = new Camera();
+        var setLight = function () {
+            var xRot = 0.0;
+            var yRot = 0.0;
+            var zRot = 0.0;
+            var s = 1.0;
+            var xPos = 1.0;
+            var yPos = 1.0;
+            var zPos = 1.0;
 
-        var xRot = 0.0;
-        var yRot = 0.0;
-        var zRot = 0.0;
-        var s = 1.0;
-        var xPos = -0.0;
-        var yPos = 0.0;
-        var zPos = -1.0;
-
-        var uniforms = {
-            rotation: vec3(xRot, yRot, zRot),
-            scale: vec3(s, s, s),
-            position: vec3(xPos, yPos, zPos) 
+            var uniforms = {
+                rotation: vec3(xRot, yRot, zRot),
+                scale: vec3(s, s, s),
+                position: vec3(xPos, yPos, zPos) 
+            };
+ 
+            pm.applyUniforms.call(this, lightUniforms, uniforms);
         };
+        setLight.call(this);
 
+        // camera
+        this.camera = new Camera();
         var cameraInfo = this.camera.info;
-        pm.applyUniforms.call(this, cameraInfo.uniforms, uniforms);
+        var cameraUniforms = cameraInfo.uniforms;
+
+        // TODO:
+        var setCamera = function () {
+            var xRot = 0.0;
+            var yRot = 0.0;
+            var zRot = 0.0;
+            var s = 1.0;
+            var xPos = 0.0;
+            var yPos = 0.0;
+            var zPos = -1.0;
+
+            var uniforms = {
+                rotation: vec3(xRot, yRot, zRot),
+                scale: vec3(s, s, s),
+                position: vec3(xPos, yPos, zPos) 
+            };
+ 
+            pm.applyUniforms.call(this, cameraUniforms, uniforms);
+        };
+        setCamera.call(this);
     };
     
     // mark - 
@@ -85,9 +124,7 @@ var Demonstrator = (function () {
 
     // mark - 
 
-
 // ------------------
-
 
     // mark - 
 
@@ -97,14 +134,14 @@ var Demonstrator = (function () {
         toUniforms.position = fromUniforms.position.slice();
     };
 
-    pm.generateVerteciesBuffer = function (vertecies) {
+    pm.generateBuffer = function (data) {
         var gl = this.gl;
 
         var bufferID = gl.createBuffer();
-        vertecies.bufferID = bufferID;
+        data.bufferID = bufferID;
 
         gl.bindBuffer(gl.ARRAY_BUFFER, bufferID);
-        gl.bufferData(gl.ARRAY_BUFFER, flatten(vertecies.data), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, flatten(data.data), gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
     };
 
@@ -129,17 +166,20 @@ var Demonstrator = (function () {
         
         if (mesh) {
             var meshInfo = mesh.info;
-            pm.applyUniforms.call(this, meshInfo.uniforms, uniforms);
-            pm.generateVerteciesBuffer.call(this, meshInfo.attributes.vertecies);
+            var meshUniforms = meshInfo.uniforms;
+            var meshAttributes = meshInfo.attributes;
+
+            pm.applyUniforms.call(this, meshUniforms, uniforms);
+
+            pm.generateBuffer.call(this, meshAttributes.vertices);
+            pm.generateBuffer.call(this, meshAttributes.normals);
         }
         return mesh;
     };
 
     // mark - 
 
-
 // ------------------
-
 
     // mark - 
 
@@ -164,61 +204,85 @@ var Demonstrator = (function () {
 
     // mark -
 
-    pm.loadUniforms = function (program, meshUniforms, cameraUniforms) {
+    pm.loadUniforms = function (program, meshUniforms, cameraUniforms, lightUniforms) {
         var gl = this.gl;
 
+        // model view
         var mvMatrixID = gl.getUniformLocation(program, "mvMatrix");
         gl.uniformMatrix4fv(mvMatrixID, false, flatten(meshUniforms.mvMatrix));
 
-        // TODO:
+        // projection
         var pMatrixID = gl.getUniformLocation(program, "pMatrix");
         gl.uniformMatrix4fv(pMatrixID, false, flatten(cameraUniforms.pMatrix));
 
-        // TODO:
-        var colorID = gl.getUniformLocation(program, "color");
-        var color = vec4(1.0, 0.0, 0.0, 1.0);
-        gl.uniform4f(colorID, color[0], color[1], color[2], color[3]);
+        // light
+        var lPositionID = gl.getUniformLocation(program, "lPosition");
+        var position = lightUniforms.position;
+        gl.uniform3f(lPositionID, position[0], position[1], position[2]);
+
+        var light = lightUniforms.light;
+
+        var pAmbientID = gl.getUniformLocation(program, "pAmbient");
+        var ambient = light.ambient;
+        gl.uniform4f(pAmbientID, ambient[0], ambient[1], ambient[2], ambient[3]);
+
+        var pDiffuseID = gl.getUniformLocation(program, "pDiffuse");
+        var diffuse = light.diffuse;
+        gl.uniform4f(pDiffuseID, diffuse[0], diffuse[1], diffuse[2], diffuse[3]);
+
+        var pSpecularID = gl.getUniformLocation(program, "pSpecular");
+        var specular = light.specular;
+        gl.uniform4f(pSpecularID, specular[0], specular[1], specular[2], specular[3]);
     };
 
     pm.loadAttributes = function (program, attributes) {
         var gl = this.gl;
 
-        var bufferID = attributes.vertecies.bufferID;
-        gl.bindBuffer(gl.ARRAY_BUFFER, bufferID);
+        // vertices
+        var vBufferID = attributes.vertices.bufferID;
+        gl.bindBuffer(gl.ARRAY_BUFFER, vBufferID);
 
         var vPositionID = gl.getAttribLocation(program, "vPosition");
         gl.vertexAttribPointer(vPositionID, 3, gl.FLOAT, false, attributes.stride(), 0);
         gl.enableVertexAttribArray(vPositionID);
+
+        // normals
+        var nBufferID = attributes.normals.bufferID;
+        gl.bindBuffer(gl.ARRAY_BUFFER, nBufferID);
+
+        var vNormalID = gl.getAttribLocation(program, "vNormal");
+        gl.vertexAttribPointer(vNormalID, 3, gl.FLOAT, false, attributes.stride(), 0);
+        gl.enableVertexAttribArray(vNormalID);
     };
 
-    pm.loadMesh = function (mesh, camera) {
+    pm.loadMesh = function (mesh, camera, light) {
         // TODO:
         var program = this.program;
 
         var meshInfo = mesh.info;
         var meshUniforms = meshInfo.uniforms;
-        meshUniforms.mvMatrix = pm.matrixFromUniforms(meshUniforms);
+        var meshAttributes = meshInfo.attributes;
 
         var cameraInfo = camera.info;
         var cameraUniforms = cameraInfo.uniforms;
 
-        // attributes
-        var attributes = meshInfo.attributes;
-        pm.loadAttributes.call(this, program, attributes);
+        var lightInfo = light.info;
+        var lightUniforms = lightInfo.uniforms;        
 
-        // uniforms
+        // attributes
+        pm.loadAttributes.call(this, program, meshAttributes);
+
         var vMatrix = cameraUniforms.mvMatrix;
-        var mMatrix = meshUniforms.mvMatrix
+        var mMatrix = pm.matrixFromUniforms(meshUniforms);
         meshUniforms.mvMatrix = mult(vMatrix, mMatrix);
 
-        pm.loadUniforms.call(this, program, meshUniforms, cameraUniforms);
+        // uniforms
+        pm.loadUniforms.call(this, program, meshUniforms, cameraUniforms, lightUniforms);
     };
 
     // mark -
 
-
 // ------------------
-
 
     // mark -
 
@@ -232,11 +296,13 @@ var Demonstrator = (function () {
 
         for (var i = 0; i < scene.objects.length; ++i) {
             var mesh = scene.objects[i];
-            pm.loadMesh.call(this, mesh, camera);
+            var meshInfo = mesh.info;
+            var meshAttributes = meshInfo.attributes;
+
+            pm.loadMesh.call(this, mesh, camera, scene.light);
 
             // TODO:
-            var meshInfo = mesh.info;
-            gl.drawArrays(gl.TRIANGLES, 0, meshInfo.attributes.count());
+            gl.drawArrays(gl.TRIANGLES, 0, meshAttributes.count());
         }
     };
 

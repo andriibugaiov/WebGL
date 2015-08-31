@@ -6,8 +6,10 @@ var CylinderGeometry = (function () {
     };
     inherit(CylinderGeometry, Geometry);
     
-    CylinderGeometry.prototype.generateVertecies = function () {
-        var data = [];
+    CylinderGeometry.prototype.generateVerticesData = function () {
+        var vertices = [];
+        var normals = [];
+
         var yTop  = 1.0;
         var yBottom = -1.0;
         var r = 1.0;
@@ -30,32 +32,55 @@ var CylinderGeometry = (function () {
             var v3 = vec3(xCur, yTop, zCur);
             var v4 = vec3(xNext, yTop, zNext);
 
-            data.push(top);
-            data.push(v4);
-            data.push(v3);
+            vertices.push(top);
+            vertices.push(v4);
+            vertices.push(v3);
+
+            var n = normalize(cross(subtract(v3, v4), subtract(top, v4)));
+            normals.push(n);
+            normals.push(n);
+            normals.push(n);
 
             // mark - 
 
-            data.push(v4);
-            data.push(v2);
-            data.push(v3);
+            vertices.push(v4);
+            vertices.push(v2);
+            vertices.push(v3);
+
+            n = normalize(cross(subtract(v3, v2), subtract(v4, v2)));
+            normals.push(n);
+            normals.push(n);
+            normals.push(n);
 
             // mark - 
 
-            data.push(v3);
-            data.push(v2);
-            data.push(v1);
+            vertices.push(v3);
+            vertices.push(v2);
+            vertices.push(v1);
+
+            n = normalize(cross(subtract(v1, v2), subtract(v3, v2)));
+            normals.push(n);
+            normals.push(n);
+            normals.push(n);
 
             // mark - 
 
-            data.push(bottom);
-            data.push(v1);
-            data.push(v2);
+            vertices.push(bottom);
+            vertices.push(v1);
+            vertices.push(v2);
+
+            n = normalize(cross(subtract(v2, v1), subtract(bottom, v1)));
+            normals.push(n);
+            normals.push(n);
+            normals.push(n);
 
             xCur = xNext;
             zCur = zNext;
         }
-        return data;
+        return {
+            vertices: vertices,
+            normals: normals
+        };
     };
 
     var pm = Object.create(CylinderGeometry.prototype);
