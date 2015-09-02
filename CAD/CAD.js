@@ -15,13 +15,18 @@ var Demonstrator = (function () {
     Demonstrator.prototype.addShape = function (shapeID, uniforms) {
         var mesh = pm.generateMesh.call(this, shapeID, uniforms);
         if (mesh) {
-            this.scene.objects.push(mesh);
-            pm.render.call(this, this.scene, this.camera);
+            this.scene.add(mesh);
         }
     };
 
     var pm = Object.create(Demonstrator.prototype);
     pm.initDemonstrator = function () {
+        pm.initWebGL.call(this);
+        pm.initGraphics.call(this);
+
+        pm.animate.call(this);
+    };
+    pm.initWebGL = function () {
         var canvas = document.getElementById("gl-canvas");
 
         // TODO:
@@ -31,20 +36,14 @@ var Demonstrator = (function () {
         // TODO:
         var program = pm.loadShaders.call(this, gl);
         this.program = program;
-
-        pm.initGraphics.call(this);
     };
-
     pm.initGraphics = function () {
         // scene
         this.scene = new Scene();
 
         // light
         var light = new Light();
-        this.scene.light = light;
-
-        var lightInfo = light.info;
-        var lightUniforms = lightInfo.uniforms;
+        this.scene.light = light; 
 
         // TODO:
         var setLight = function () {
@@ -61,15 +60,13 @@ var Demonstrator = (function () {
                 scale: vec3(s, s, s),
                 position: vec3(xPos, yPos, zPos) 
             };
- 
-            pm.applyUniforms.call(this, lightUniforms, uniforms);
+        
+            light.setUniforms(uniforms);
         };
         setLight.call(this);
 
         // camera
         this.camera = new Camera();
-        var cameraInfo = this.camera.info;
-        var cameraUniforms = cameraInfo.uniforms;
 
         // TODO:
         var setCamera = function () {
@@ -87,7 +84,7 @@ var Demonstrator = (function () {
                 position: vec3(xPos, yPos, zPos) 
             };
  
-            pm.applyUniforms.call(this, cameraUniforms, uniforms);
+            this.camera.setUniforms(uniforms);
         };
         setCamera.call(this);
     };
@@ -128,12 +125,6 @@ var Demonstrator = (function () {
 
     // mark - 
 
-    pm.applyUniforms = function(toUniforms, fromUniforms) {
-        toUniforms.rotation = fromUniforms.rotation.slice();
-        toUniforms.scale = fromUniforms.scale.slice();
-        toUniforms.position = fromUniforms.position.slice();
-    };
-
     pm.generateBuffer = function (data) {
         var gl = this.gl;
 
@@ -151,25 +142,25 @@ var Demonstrator = (function () {
         var mesh = null;
         switch(shapeID) {
             case 'sphereID': {
-                mesh = new Mesh(new SphereGeometry(), null);
+                mesh = new Mesh(new SphereGeometry(), new Material());
                 break;
             }
             case 'coneID': {
-                mesh = new Mesh(new ConeGeometry(), null);
+                mesh = new Mesh(new ConeGeometry(), new Material());
                 break;
             }
             case 'cylinderID': {
-                mesh = new Mesh(new CylinderGeometry(), null);
+                mesh = new Mesh(new CylinderGeometry(), new Material());
                 break;
             }
         }
         
         if (mesh) {
+            mesh.setUniforms(uniforms);
+
             var meshInfo = mesh.info;
             var meshUniforms = meshInfo.uniforms;
             var meshAttributes = meshInfo.attributes;
-
-            pm.applyUniforms.call(this, meshUniforms, uniforms);
 
             pm.generateBuffer.call(this, meshAttributes.vertices);
             pm.generateBuffer.call(this, meshAttributes.normals);
@@ -180,27 +171,6 @@ var Demonstrator = (function () {
     // mark - 
 
 // ------------------
-
-    // mark - 
-
-    pm.matrixFromUniforms = function (uniforms) {
-        var t = uniforms.position;
-        var tMatrix = translate(t);        
-
-        var s = uniforms.scale;
-        var sMatrix = scalem(s);
-
-        var r = uniforms.rotation;
-        var rxMatrix = rotateX(r[0]);
-        var ryMatrix = rotateY(r[1]);
-        var rzMatrix = rotateZ(r[2]);
-        var rzyxMatrix = mult(rzMatrix, ryMatrix);
-        var rzyxMatrix = mult(rzyxMatrix, rxMatrix);
-
-        var tsMatrix = mult(tMatrix, sMatrix);
-        var matrix = mult(tsMatrix, rzyxMatrix);
-        return matrix;
-    };
 
     // mark -
 
@@ -221,18 +191,22 @@ var Demonstrator = (function () {
         gl.uniform3f(lPositionID, position[0], position[1], position[2]);
 
         var light = lightUniforms.light;
+        var material = meshUniforms.material;
+
+        var mShininessID = gl.getUniformLocation(program, "mShininess");
+        gl.uniform1f(mShininessID, material.shininess);
 
         var pAmbientID = gl.getUniformLocation(program, "pAmbient");
-        var ambient = light.ambient;
-        gl.uniform4f(pAmbientID, ambient[0], ambient[1], ambient[2], ambient[3]);
+        var pAmbient = mult(light.ambient, material.ambient);
+        gl.uniform4f(pAmbientID, pAmbient[0], pAmbient[1], pAmbient[2], pAmbient[3]);
 
         var pDiffuseID = gl.getUniformLocation(program, "pDiffuse");
-        var diffuse = light.diffuse;
-        gl.uniform4f(pDiffuseID, diffuse[0], diffuse[1], diffuse[2], diffuse[3]);
+        var pDiffuse = mult(light.diffuse, material.diffuse);
+        gl.uniform4f(pDiffuseID, pDiffuse[0], pDiffuse[1], pDiffuse[2], pDiffuse[3]);
 
         var pSpecularID = gl.getUniformLocation(program, "pSpecular");
-        var specular = light.specular;
-        gl.uniform4f(pSpecularID, specular[0], specular[1], specular[2], specular[3]);
+        var pSpecular = mult(light.specular, material.specular);
+        gl.uniform4f(pSpecularID, pSpecular[0], pSpecular[1], pSpecular[2], pSpecular[3]);
     };
 
     pm.loadAttributes = function (program, attributes) {
@@ -259,6 +233,7 @@ var Demonstrator = (function () {
         // TODO:
         var program = this.program;
 
+        mesh.updateMatrix();
         var meshInfo = mesh.info;
         var meshUniforms = meshInfo.uniforms;
         var meshAttributes = meshInfo.attributes;
@@ -267,13 +242,13 @@ var Demonstrator = (function () {
         var cameraUniforms = cameraInfo.uniforms;
 
         var lightInfo = light.info;
-        var lightUniforms = lightInfo.uniforms;        
+        var lightUniforms = lightInfo.uniforms;
 
         // attributes
         pm.loadAttributes.call(this, program, meshAttributes);
 
         var vMatrix = cameraUniforms.mvMatrix;
-        var mMatrix = pm.matrixFromUniforms(meshUniforms);
+        var mMatrix = meshUniforms.mvMatrix
         meshUniforms.mvMatrix = mult(vMatrix, mMatrix);
 
         // uniforms
@@ -286,16 +261,30 @@ var Demonstrator = (function () {
 
     // mark -
 
+    // TODO:
+    var delta = 0.0;
+    pm.animate = function () {
+        var lightInfo = this.scene.light.info;
+        var lightUniforms = lightInfo.uniforms;
+
+        delta += 0.01;
+        delta = delta <= 2.0 ? delta : 0.0;
+
+        var r = Math.sqrt(2);
+        lightUniforms.position[0] = r * Math.cos(delta * Math.PI);
+        lightUniforms.position[2] = r * Math.sin(delta * Math.PI);
+
+        pm.render.call(this, this.scene, this.camera);
+        requestAnimationFrame(pm.animate.bind(this));
+    };
+
     pm.render = function (scene, camera) {
         var gl = this.gl;
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        var cameraInfo = camera.info;
-        var cameraUniforms = cameraInfo.uniforms;
-        cameraUniforms.mvMatrix = pm.matrixFromUniforms(cameraUniforms);
-
-        for (var i = 0; i < scene.objects.length; ++i) {
-            var mesh = scene.objects[i];
+        camera.updateMatrix();
+        for (var i = 0; i < scene.children.length; ++i) {
+            var mesh = scene.children[i];
             var meshInfo = mesh.info;
             var meshAttributes = meshInfo.attributes;
 

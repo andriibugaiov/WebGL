@@ -11,11 +11,15 @@ var Mesh = (function () {
 
     Mesh.prototype.generateUniforms = function () {
         var uniforms = Object3D.prototype.generateUniforms.call(this);
+
+        var materialData = this.material.generateMaterialData();
+        uniforms.material = materialData;
+
         return uniforms;
     };
 
 	Mesh.prototype.generateAttributes = function () {
-        var verticesData = this.geometry.generateVerticesData()
+        var verticesData = this.geometry.generateVerticesData();
 
         var attributes = {
             vertices: {

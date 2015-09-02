@@ -10,7 +10,7 @@ uniform vec4 pAmbient;
 uniform vec4 pDiffuse;
 uniform vec4 pSpecular;
 
-// uniform float mShininess;
+uniform float mShininess;
 
 attribute vec3 vPosition;
 attribute vec3 vNormal;
@@ -23,22 +23,17 @@ void main() {
     gl_Position = pMatrix * vtPosition;
 
 	vec3 l = normalize(lPosition - vtPosition.xyz);
-	vec3 e = normalize(-vtPosition.xyz);
-    vec3 h = normalize(lPosition + e);
 	vec3 n = normalize(vtNormal.xyz);
 
-    vec4 ambient = pAmbient;
-
     float dK = max(0.0, dot(l, n));
-	vec4 diffuse = dK * pDiffuse;
-
-	vec4 specular = vec4(0.0, 0.0, 0.0, 1.0);
+	float sK = 0.0;
     if (dot(l, n) >= 0.0) {
-		float sK = pow(max(dot(n, h), 0.0), 1.0);
-		specular = sK * pSpecular;; 
+    	vec3 e = normalize(-vtPosition.xyz);
+    	vec3 h = normalize(lPosition + e);
+		sK = pow(max(dot(n, h), 0.0), mShininess);
     } 
 
-    fColor = ambient + diffuse + specular;
+    fColor = pAmbient + dK * pDiffuse + sK * pSpecular;
     fColor.a = 1.0;
 }
 </script>

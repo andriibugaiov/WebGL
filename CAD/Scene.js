@@ -2,9 +2,11 @@
 var Scene = (function () {
 
 	var Scene = function () {
-		this.objects = [];
+		Object3D.call(this);
+		
 		this.light = null;
 	};
+	inherit(Scene, Object3D);
 
 	return Scene;
 })();
