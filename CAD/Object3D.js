@@ -1,3 +1,4 @@
+"use strict";
 
 var Object3D = (function () {
 
@@ -6,10 +7,15 @@ var Object3D = (function () {
         
 		pm.init.call(this);
 	};
+    Object3D.prototype.animate = function (time) {
+        for (var i = 0; i < this.children.length; ++i) {
+            var mesh = this.children[i];
+            mesh.animate(time);
+        }
+    };
     Object3D.prototype.add = function (mesh) {
         this.children.push(mesh);
     };
-
     Object3D.prototype.generateAttributes = function () {
         return null;
     };

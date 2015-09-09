@@ -23,40 +23,38 @@ var SphereGeometry = (function () {
     inherit(SphereGeometry, Geometry);
     
     SphereGeometry.prototype.generateVerticesData = function () {
-        var vertices = [];
-        var normals = [];
-        var depth = 4;
+        var verticesData = Geometry.prototype.generateVerticesData.call(this);
+        var depth = 5;
         for (var i = 0; i < tIndices.length; ++i) {
             pm.subdivide(vData[tIndices[i][0]],
                          vData[tIndices[i][1]],
-                         vData[tIndices[i][2]], depth, vertices, normals);
+                         vData[tIndices[i][2]], 
+                         verticesData.vertices, 
+                         verticesData.normals, 
+                         verticesData.texels, depth);
         }
-        return {
-            vertices: vertices,
-            normals: normals
-        };
+        return verticesData;
     };
 
     var pm = Object.create(SphereGeometry.prototype);
-    pm.subdivide = function (v1, v2, v3, depth, vertices, normals) {
+    pm.subdivide = function (v1, v2, v3, vertices, normals, texels, depth) {
         if (depth == 0) {
-            vertices.push(v1);
-            vertices.push(v2);
-            vertices.push(v3);
-
             var n = normalize(cross(subtract(v3, v2), subtract(v1, v2)));
-            normals.push(n);
-            normals.push(n);
-            normals.push(n);
+            var tmp = [v1, v2, v3];
+            for (var i = 0; i < tmp.length; ++i) {
+                vertices.push(tmp[i]);
 
-            // normals.push(v1);
-            // normals.push(v2);
-            // normals.push(v3);
+                normals.push(n);
+                //normals.push(tmp[i]);
 
-            // console.log("***");
-            // console.log(v1);
-            // console.log(v2);
-            // console.log(v3);
+                var phi = Math.atan2(tmp[i][2], tmp[i][0]) + Math.PI;
+                var theta = Math.acos(tmp[i][1]);
+                var s = (2 * Math.PI - phi) / (2 * Math.PI);
+                var t = (Math.PI - theta) / Math.PI;
+                var texel = vec2(s, t);
+
+                texels.push(texel);
+            }            
             return;
         }
         
@@ -73,10 +71,10 @@ var SphereGeometry = (function () {
         v23 = normalize(v23);
         v31 = normalize(v31);
         
-        pm.subdivide(v1, v12, v31, depth - 1, vertices, normals);
-        pm.subdivide(v2, v23, v12, depth - 1, vertices, normals);
-        pm.subdivide(v3, v31, v23, depth - 1, vertices, normals);
-        pm.subdivide(v12, v23, v31, depth - 1, vertices, normals);
+        pm.subdivide(v1, v12, v31, vertices, normals, texels, depth - 1);
+        pm.subdivide(v2, v23, v12, vertices, normals, texels, depth - 1);
+        pm.subdivide(v3, v31, v23, vertices, normals, texels, depth - 1);
+        pm.subdivide(v12, v23, v31, vertices, normals, texels, depth - 1);
     };
 
     return SphereGeometry;

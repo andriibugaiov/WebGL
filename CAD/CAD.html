@@ -2,39 +2,63 @@
 <html>
 <head>
 <script id="vertex-shader" type="x-shader/x-vertex">
-uniform mat4 pMatrix;
-uniform mat4 mvMatrix;
-
-uniform vec3 lPosition;
-uniform vec4 pAmbient;
-uniform vec4 pDiffuse;
-uniform vec4 pSpecular;
-
-uniform float mShininess;
+// position
+uniform mat4 upMatrix;
+uniform mat4 umvMatrix;
 
 attribute vec3 vPosition;
 attribute vec3 vNormal;
+attribute vec2 vTexel;
 
+// light
+struct Light {
+  vec3 position;
+  vec4 ambient;
+  vec4 diffuse;
+  vec4 specular;
+  // TODO:
+  // bool enabled;
+  // float attenConstant;
+  // float attenLinear;
+  // float attenExp;
+};
+uniform Light uLight;
+
+// material
+struct Material {
+  vec4 ambient;
+  vec4 diffuse;
+  vec4 specular;
+  float shininess;
+};
+uniform Material uMaterial;
+
+// interpolation
 varying vec4 fColor;
+varying vec2 fTexel;
 
 void main() {
-	vec4 vtPosition = mvMatrix * vec4(vPosition, 1.0);
-	vec4 vtNormal = mvMatrix * vec4(vNormal, 0.0);
-    gl_Position = pMatrix * vtPosition;
+	vec4 vtPosition = umvMatrix * vec4(vPosition, 1.0);
+	vec4 vtNormal = umvMatrix * vec4(vNormal, 0.0);
+    gl_Position = upMatrix * vtPosition;
 
-	vec3 l = normalize(lPosition - vtPosition.xyz);
+	vec3 l = normalize(uLight.position - vtPosition.xyz);
 	vec3 n = normalize(vtNormal.xyz);
 
     float dK = max(0.0, dot(l, n));
 	float sK = 0.0;
     if (dot(l, n) >= 0.0) {
     	vec3 e = normalize(-vtPosition.xyz);
-    	vec3 h = normalize(lPosition + e);
-		sK = pow(max(dot(n, h), 0.0), mShininess);
+    	vec3 h = normalize(uLight.position + e);
+		sK = pow(max(dot(n, h), 0.0), uMaterial.shininess);
     } 
 
-    fColor = pAmbient + dK * pDiffuse + sK * pSpecular;
+    fColor = (uLight.ambient * uMaterial.ambient) + 
+    	dK * (uLight.diffuse * uMaterial.diffuse) + 
+    	sK * (uLight.specular * uMaterial.specular);
+
     fColor.a = 1.0;
+    fTexel = vTexel;
 }
 </script>
 
@@ -42,15 +66,24 @@ void main() {
 precision mediump float;
 
 varying vec4 fColor;
+varying vec2 fTexel;
+
+// TODO:
+// struct Texture {
+// 	sampler2D umTexture;
+// 	bool enabled;
+// };
+// uniform Texture umTexture;
+uniform sampler2D umTexture;
 
 void main() {
-    gl_FragColor = fColor;
+    gl_FragColor = fColor * texture2D(umTexture, fTexel);
 }
 </script>
 
-<script type="text/javascript" src="../Common/webgl-utils.js"></script>
-<script type="text/javascript" src="../Common/initShaders.js"></script>
-<script type="text/javascript" src="../Common/MV.js"></script>
+<script type="text/javascript" src="../Utilities/webgl-utils.js"></script>
+<script type="text/javascript" src="../Utilities/initShaders.js"></script>
+<script type="text/javascript" src="../Utilities/MV.js"></script>
 
 <script>
 	var inherit = function (childObject, parentObject) {
@@ -72,6 +105,7 @@ void main() {
 <script type="text/javascript" src="Mesh/Geometry/CylinderGeometry.js"></script>
 
 <script type="text/javascript" src="Mesh/Material.js"></script>
+<script type="text/javascript" src="Mesh/TextureMaterial.js"></script>
 
 <script type="text/javascript" src="Mesh/Mesh.js"></script>
 
@@ -86,12 +120,19 @@ void main() {
 </head>
 
 <body>
+
 <div>
-<div>
+<!-- <div>
 	Shape:
 	<input type="radio" name="shape" value="sphereID" checked>Sphere
 	<input type="radio" name="shape" value="coneID">Cone
 	<input type="radio" name="shape" value="cylinderID">Cylinder
+</div> -->
+
+<div>
+	Texture:
+	<input type="radio" name="texture" value="standardID" checked>Standard Format
+	<input type="radio" name="texture" value="regularID">Regular Pattern
 </div>
 
 <div>
@@ -125,7 +166,8 @@ void main() {
 	<input id="scaleXYZ" type="range" 
 	min="0.0" 
 	max="0.5" 
-	step="0.01" />
+	step="0.01"
+	value="0.5" />
 	<input id="boxScale" type="text" />
 </div>
 <div>
@@ -169,7 +211,7 @@ void main() {
 
 	var scaleXYZ = document.getElementById("scaleXYZ");
 	var boxScale = document.getElementById("boxScale");
-	boxScale.value = scale.value = 0.25;
+	boxScale.value = scale.value = 0.5;
 	scaleXYZ.addEventListener("change", function (event) {
 		boxScale.value = event.target.value;
 	});
@@ -241,6 +283,42 @@ void main() {
 		boxRotZ.value = event.target.value;
 	});
 
+// mark - 
+
+	var generateImage = function (texSize) {
+		if (texSize < 4)
+				return null;
+
+		// Create a checkerboard pattern using floats
+		var image1 = new Array()
+		for (var i =0; i<texSize; i++) {
+			image1[i] = new Array();
+		}
+
+	    for (var i =0; i<texSize; i++)  {
+	       for ( var j = 0; j < texSize; j++) {
+	           image1[i][j] = new Float32Array(4);
+	       }
+	   	}
+	    for (var i =0; i<texSize; i++) {
+	        for (var j=0; j<texSize; j++) {
+	            var c = (((i & 0x8) == 0) ^ ((j & 0x8)  == 0));
+	            image1[i][j] = [c, c, c, 1];
+	        }
+	    }
+
+		// Convert floats to ubytes for texture
+		var image2 = new Uint8Array(4*texSize*texSize);
+	    for ( var i = 0; i < texSize; i++ ) {
+	        for ( var j = 0; j < texSize; j++ ) {
+	           for(var k =0; k<4; k++) {
+	                image2[4*texSize*i+4*j+k] = 255*image1[i][j][k];
+	            }
+	        }
+	    }
+		return image2;
+	};
+
 // mark - add shape
 
 	var add = document.getElementById("add");
@@ -253,24 +331,62 @@ void main() {
 		var yPos = Number(posY.value);
 		var zPos = Number(posZ.value);
 
-		var uniforms = {
-			rotation: vec3(xRot, yRot, zRot),
-			scale: vec3(s, s, s),
-            position: vec3(xPos, yPos, zPos) 
-        };
+		var shapeID = "sphereID";
+		// var radiosShape = document.getElementsByName("shape");
+		// for(var i = 0; i < radiosShape.length; ++i) {
+		// 	var radio = radiosShape[i];
+		// 	if(radio.checked == true) {
+		// 		shapeID = radio.value;
+		// 		break;
+		//     }
+	 	//  }
 
-        var shapeID = null;
-		var radiosShape = document.getElementsByName("shape");
-		for(var i = 0; i < radiosShape.length; ++i) {
-			var radio = radiosShape[i];
-			if(radio.checked == true) {
-				shapeID = radio.value;
+	    var textureID = null;
+		var radiosTexture = document.getElementsByName("texture");
+		for(var i = 0; i < radiosTexture.length; ++i) {
+			var texture = radiosTexture[i];
+			if(texture.checked == true) {
+				textureID = texture.value;
 				break;
 		    }
 	    }
 
 	    if (demonstrator && shapeID) {
-	    	demonstrator.addShape(shapeID, uniforms);
+	    	var uniforms = {
+				rotation: vec3(xRot, yRot, zRot),
+				scale: vec3(s, s, s),
+            	position: vec3(xPos, yPos, zPos),
+            	material: {}
+        	};
+        	if (textureID) {
+        		uniforms.material.texture = {
+        			textureID: textureID,
+            		image: null,
+            		size: 0
+            	};
+            	switch (textureID) {
+            		case "standardID": {
+            			var image = new Image();
+		        		image.src = "../Resources/EarthTexture.jpeg";
+		        		image.onload = function () {
+		        			uniforms.material.texture.image = image;
+		        			demonstrator.addShape(shapeID, uniforms);
+		        		};
+            			break;
+            		}
+            		case "regularID": {
+            			var size = 64;
+            			var image = generateImage(size);
+            			uniforms.material.texture.image = image;
+            			uniforms.material.texture.size = size;
+            			
+		        		demonstrator.addShape(shapeID, uniforms);
+            			break;
+            		}
+            	}
+        	} else {
+        		demonstrator.addShape(shapeID, uniforms);
+        	}
 	    }
 	});
 </script>

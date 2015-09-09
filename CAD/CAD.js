@@ -43,7 +43,7 @@ var Demonstrator = (function () {
 
         // light
         var light = new Light();
-        this.scene.light = light; 
+        this.scene.add(light); 
 
         // TODO:
         var setLight = function () {
@@ -52,7 +52,7 @@ var Demonstrator = (function () {
             var zRot = 0.0;
             var s = 1.0;
             var xPos = 1.0;
-            var yPos = 1.0;
+            var yPos = 5.0;
             var zPos = 1.0;
 
             var uniforms = {
@@ -125,15 +125,49 @@ var Demonstrator = (function () {
 
     // mark - 
 
-    pm.generateBuffer = function (data) {
+    pm.generateAttributeBuffer = function (attribute) {
         var gl = this.gl;
 
         var bufferID = gl.createBuffer();
-        data.bufferID = bufferID;
+        attribute.bufferID = bufferID;
 
         gl.bindBuffer(gl.ARRAY_BUFFER, bufferID);
-        gl.bufferData(gl.ARRAY_BUFFER, flatten(data.data), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.bufferData(gl.ARRAY_BUFFER, flatten(attribute.data), gl.STATIC_DRAW);
+    };
+
+    pm.generateTextureBuffer = function (texture) {
+        if (!texture.image || !texture.textureID)
+            return;
+
+        var gl = this.gl;
+
+        var bufferID = gl.createTexture();
+        texture.bufferID = bufferID;
+
+        gl.bindTexture(gl.TEXTURE_2D, bufferID);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+        switch (texture.textureID) {
+            case "standardID": {
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                break;
+            }
+            case "regularID": {
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.size, texture.size, 0, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+
+                gl.generateMipmap(gl.TEXTURE_2D);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+                break;
+            }
+        }
+
+        gl.activeTexture(gl.TEXTURE0);
     };
 
     // mark - 
@@ -142,7 +176,13 @@ var Demonstrator = (function () {
         var mesh = null;
         switch(shapeID) {
             case 'sphereID': {
-                mesh = new Mesh(new SphereGeometry(), new Material());
+                // TODO:
+                if (uniforms.material.hasOwnProperty("texture")) {
+                    var texture = uniforms.material.texture;
+                    mesh = new Mesh(new SphereGeometry(), new TextureMaterial(texture));
+                } else {
+                    mesh = new Mesh(new SphereGeometry(), new Material());
+                }
                 break;
             }
             case 'coneID': {
@@ -160,10 +200,15 @@ var Demonstrator = (function () {
 
             var meshInfo = mesh.info;
             var meshUniforms = meshInfo.uniforms;
-            var meshAttributes = meshInfo.attributes;
+            var meshMaterial = meshUniforms.material;
+            if (meshMaterial.hasOwnProperty("texture")) {
+                pm.generateTextureBuffer.call(this, meshMaterial.texture);    
+            }
 
-            pm.generateBuffer.call(this, meshAttributes.vertices);
-            pm.generateBuffer.call(this, meshAttributes.normals);
+            var meshAttributes = meshInfo.attributes;
+            pm.generateAttributeBuffer.call(this, meshAttributes.vertices);
+            pm.generateAttributeBuffer.call(this, meshAttributes.normals);
+            pm.generateAttributeBuffer.call(this, meshAttributes.texels);
         }
         return mesh;
     };
@@ -177,36 +222,51 @@ var Demonstrator = (function () {
     pm.loadUniforms = function (program, meshUniforms, cameraUniforms, lightUniforms) {
         var gl = this.gl;
 
-        // model view
-        var mvMatrixID = gl.getUniformLocation(program, "mvMatrix");
-        gl.uniformMatrix4fv(mvMatrixID, false, flatten(meshUniforms.mvMatrix));
+        // position
+        var umvMatrixID = gl.getUniformLocation(program, "umvMatrix");
+        gl.uniformMatrix4fv(umvMatrixID, false, flatten(meshUniforms.mvMatrix));
 
-        // projection
-        var pMatrixID = gl.getUniformLocation(program, "pMatrix");
-        gl.uniformMatrix4fv(pMatrixID, false, flatten(cameraUniforms.pMatrix));
+        var upMatrixID = gl.getUniformLocation(program, "upMatrix");
+        gl.uniformMatrix4fv(upMatrixID, false, flatten(cameraUniforms.pMatrix));
 
         // light
-        var lPositionID = gl.getUniformLocation(program, "lPosition");
-        var position = lightUniforms.position;
-        gl.uniform3f(lPositionID, position[0], position[1], position[2]);
+        var lPositionID = gl.getUniformLocation(program, "uLight.position");
+        gl.uniform3fv(lPositionID, lightUniforms.position);
 
         var light = lightUniforms.light;
-        var material = meshUniforms.material;
+        
+        var lAmbientID = gl.getUniformLocation(program, "uLight.ambient");
+        gl.uniform4fv(lAmbientID, light.ambient);
 
-        var mShininessID = gl.getUniformLocation(program, "mShininess");
-        gl.uniform1f(mShininessID, material.shininess);
+        var lDiffuseID = gl.getUniformLocation(program, "uLight.diffuse");
+        gl.uniform4fv(lDiffuseID, light.diffuse);
 
-        var pAmbientID = gl.getUniformLocation(program, "pAmbient");
-        var pAmbient = mult(light.ambient, material.ambient);
-        gl.uniform4f(pAmbientID, pAmbient[0], pAmbient[1], pAmbient[2], pAmbient[3]);
+        var lSpecularID = gl.getUniformLocation(program, "uLight.specular");
+        gl.uniform4fv(lSpecularID, light.specular);
 
-        var pDiffuseID = gl.getUniformLocation(program, "pDiffuse");
-        var pDiffuse = mult(light.diffuse, material.diffuse);
-        gl.uniform4f(pDiffuseID, pDiffuse[0], pDiffuse[1], pDiffuse[2], pDiffuse[3]);
 
-        var pSpecularID = gl.getUniformLocation(program, "pSpecular");
-        var pSpecular = mult(light.specular, material.specular);
-        gl.uniform4f(pSpecularID, pSpecular[0], pSpecular[1], pSpecular[2], pSpecular[3]);
+        // material
+        var meshMaterial = meshUniforms.material;
+
+        var mAmbientID = gl.getUniformLocation(program, "uMaterial.ambient");
+        gl.uniform4fv(mAmbientID, meshMaterial.ambient);
+
+        var mDiffuseID = gl.getUniformLocation(program, "uMaterial.diffuse");
+        gl.uniform4fv(mDiffuseID, meshMaterial.diffuse);
+
+        var mSpecularID = gl.getUniformLocation(program, "uMaterial.specular");
+        gl.uniform4fv(mSpecularID, meshMaterial.specular);
+
+        var mShininessID = gl.getUniformLocation(program, "uMaterial.shininess");
+        gl.uniform1f(mShininessID, meshMaterial.shininess);
+
+        if (meshMaterial.hasOwnProperty("texture")) {
+            var tBufferID = meshMaterial.texture.bufferID;
+            gl.bindTexture(gl.TEXTURE_2D, tBufferID);
+
+            var umTextureID = gl.getUniformLocation(program, "umTexture");
+            gl.uniform1i(umTextureID, 0);
+        }
     };
 
     pm.loadAttributes = function (program, attributes) {
@@ -227,6 +287,14 @@ var Demonstrator = (function () {
         var vNormalID = gl.getAttribLocation(program, "vNormal");
         gl.vertexAttribPointer(vNormalID, 3, gl.FLOAT, false, attributes.stride(), 0);
         gl.enableVertexAttribArray(vNormalID);
+
+        // texels
+        var tBufferID = attributes.texels.bufferID;
+        gl.bindBuffer(gl.ARRAY_BUFFER, tBufferID);
+
+        var vTexelID = gl.getAttribLocation(program, "vTexel");
+        gl.vertexAttribPointer(vTexelID, 2, gl.FLOAT, false, attributes.stride(), 0);
+        gl.enableVertexAttribArray(vTexelID);
     };
 
     pm.loadMesh = function (mesh, camera, light) {
@@ -262,17 +330,12 @@ var Demonstrator = (function () {
     // mark -
 
     // TODO:
-    var delta = 0.0;
+    var time = 0.0;
     pm.animate = function () {
-        var lightInfo = this.scene.light.info;
-        var lightUniforms = lightInfo.uniforms;
+        time += 0.01;
 
-        delta += 0.01;
-        delta = delta <= 2.0 ? delta : 0.0;
-
-        var r = Math.sqrt(2);
-        lightUniforms.position[0] = r * Math.cos(delta * Math.PI);
-        lightUniforms.position[2] = r * Math.sin(delta * Math.PI);
+        this.scene.animate(time);
+        this.camera.animate(time);
 
         pm.render.call(this, this.scene, this.camera);
         requestAnimationFrame(pm.animate.bind(this));
@@ -283,14 +346,14 @@ var Demonstrator = (function () {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         camera.updateMatrix();
+
+        // TODO:
         for (var i = 0; i < scene.children.length; ++i) {
             var mesh = scene.children[i];
             var meshInfo = mesh.info;
             var meshAttributes = meshInfo.attributes;
 
             pm.loadMesh.call(this, mesh, camera, scene.light);
-
-            // TODO:
             gl.drawArrays(gl.TRIANGLES, 0, meshAttributes.count());
         }
     };
