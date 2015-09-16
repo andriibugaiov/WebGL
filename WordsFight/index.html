@@ -52,7 +52,44 @@
 		<script src="three.min.js"></script>
 		<script>
 
-// mark - GamePlay
+			var HashTable = function () {
+				this.ht = {};
+				this.size = 0;
+			};
+			HashTable.prototype.insert = function(key, value) {
+				if (!this.ht.hasOwnProperty(key)) {
+					++this.size;	
+				} 
+				this.ht[key] = value;
+			};
+			HashTable.prototype.remove = function(key) {
+				if (this.ht.hasOwnProperty(key)) {
+					delete this.ht[key];
+					--this.size;
+				}
+			};
+			HashTable.prototype.get = function(key) {
+				if (this.ht.hasOwnProperty(key)) {
+					return this.ht[key];
+				}
+				return null;
+			};
+			HashTable.prototype.contains = function(key) {
+				if (this.ht.hasOwnProperty(key)) {
+					return true;
+				}
+				return false;
+			};
+			HashTable.prototype.isEmpty = function() {
+				return this.size < 1;
+			};
+			HashTable.prototype.getAllValues = function() {
+				var all = [];
+				for(var key in this.ht) {
+    				all.push(this.ht[key]);
+				}	
+				return all;
+			};	
 
 			var Helper = {};
 			Helper.getSVGTextImage = function(str, callback){
@@ -92,25 +129,34 @@
 		            parent.add(mesh);
 		        });
     		};
+    		Helper.keyToCharMap = new HashTable();
+    		var keyCodesChars = ["a", 65,"b", 66,"c", 67,"d", 68,"e", 69,"f", 70,"g", 71,"h", 72,"i", 73,"j", 74,"k", 75,"l", 76,"m", 77,"n", 78,"o", 79,"p", 80,"q", 81,"r", 82,"s", 83,"t", 84,"u", 85,"v", 86,"w", 87,"x", 88,"y", 89,"z", 90];
+			for (var i = 1; i < keyCodesChars.length; i += 2) {
+				Helper.keyToCharMap.insert(keyCodesChars[i], keyCodesChars[i - 1]);
+			}
+			// console.log("Key to char map length: ");
+			// console.log(Helper.keyToCharMap.ht);
+
+// mark - GamePlay
 	
 			var Player = function () {
 				// player object
 				var size = 50;
 				var geometryH = new THREE.BoxGeometry(size, 20, 20, 2, 2, 2); 
 				var geometryV = new THREE.BoxGeometry(20, 20, size, 2, 2, 2); 
-				var geometryRed = new THREE.MeshLambertMaterial({ 
+				var materialRed = new THREE.MeshLambertMaterial({ 
 					color: 0x903535
 				});
 
-				var objectV = new THREE.Mesh(geometryV, geometryRed);
-				var objectH = new THREE.Mesh(geometryH, geometryRed);
+				var objectV = new THREE.Mesh(geometryV, materialRed);
+				var objectH = new THREE.Mesh(geometryH, materialRed);
 				objectH.add(objectV);
 
 				this.object = new THREE.Object3D();
 				this.object.position.y = 10;
 				this.object.add(objectH);
 
-				// player attack filed
+				// player attack field
 				var radius = 200;
 				var geometry = new THREE.CylinderGeometry(radius, radius, 1, 32);
 				var material = new THREE.MeshBasicMaterial({ 
@@ -121,8 +167,6 @@
 				this.attackField = new THREE.Mesh(geometry, material);
 				this.attackField.radius = radius;
 				this.object.add(this.attackField);
-
-
 
 				// player contols
 				this.movementControls = {
@@ -138,18 +182,14 @@
 						var mp = this.movementParams;
 						switch (event.keyCode) {
 							case 38: // up
-							// case 87: // w
 								mp.moveForward = true;
 								break;
 							case 37: // left
-							// case 65: // a
 								mp.moveLeft = true; break;
 							case 40: // down
-							// case 83: // s
 								mp.moveBackward = true;
 								break;
 							case 39: // right
-							// case 68: // d
 								mp.moveRight = true;
 								break;
 							// case 32: // space
@@ -163,19 +203,15 @@
 						var mp = this.movementParams;
 						switch(event.keyCode) {
 							case 38: // up
-							// case 87: // w
 								mp.moveForward = false;
 								break;
 							case 37: // left
-							// case 65: // a
 								mp.moveLeft = false;
 								break;
 							case 40: // down
-							// case 83: // s
 								mp.moveBackward = false;
 								break;
 							case 39: // right
-							// case 68: // d
 								mp.moveRight = false;
 								break;
 						}
@@ -190,6 +226,7 @@
 			var Bot = function (word) {
 				this.word = word;
 				this.rate = word.length;
+				this.isDead = false;
 
 				var size = Math.min(30, 4 * this.rate);
 				var geometry = new THREE.BoxGeometry(size, size, size);
@@ -202,7 +239,17 @@
 				Helper.positionImageText(this.word, this.object);
 			};
 
-			var Rocket = function () {
+			var Rocket = function (target) {
+				this.target = target;
+
+				var size = 5;
+				var geometry = new THREE.BoxGeometry(size, size, size);
+				var materialRed = new THREE.MeshLambertMaterial({ 
+					color: 0x903535
+				});
+
+				var object = new THREE.Mesh(geometry, materialRed);
+				this.object = object;
 			};
 
 // mark - 			
@@ -212,8 +259,8 @@
 
 				// canvas
 				this.aspect = window.innerWidth / window.innerHeight;
-				this.buttleFieldWidthTrue = 1000;
-				this.buttleFieldHeightTrue = 1000;
+				this.buttleFieldWidthUsed = 1000;
+				this.buttleFieldHeightUsed = 1000;
 
 				this.buttleFieldWidth = 1500;
 				this.buttleFieldHeight = 1500;
@@ -229,12 +276,41 @@
 
 				// game play
 				this.prevTime = performance.now();
+
 				this.bots = [];
+				this.botsInAttackField = new HashTable();
+
+				this.rockets = [];
 				this.player = null;
 
 				// initialization
 				this.init.call(this);
 				this.animate.call(this);
+
+				document.addEventListener('keydown', this.onKeyDown.bind(this), false);
+			};
+
+			GamePlay.prototype.onKeyDown = function (event) {
+				var code = event.keyCode;
+				if (Helper.keyToCharMap.contains(code)) {
+					var ch = Helper.keyToCharMap.get(code);
+					// console.log("Char to fire: ");
+					// console.log(ch);
+
+					if (!this.botsInAttackField.isEmpty()) {
+						var allBots = this.botsInAttackField.getAllValues();
+						for(var i = 0; i < allBots.length; ++i) {
+							var bot = allBots[i];
+    						var rocket = new Rocket(bot);
+    						this.rockets.push(rocket);
+
+    						var pObject = this.player.object;
+    						var rObject = rocket.object;
+    						rObject.position.set(pObject.position.x, pObject.position.y, pObject.position.z);
+    						this.scene.add(rObject);
+						}
+					}
+				}
 			};
 			
 			GamePlay.prototype.init = function () {
@@ -309,13 +385,13 @@
 				this.scene.add(buttleFieldBackground);
 
 				// center
-				var geometryBlue = new THREE.MeshBasicMaterial({ 
+				var materialBlue = new THREE.MeshBasicMaterial({ 
 					// color: 0x353E90,
 					color: 0xeeeeee
 				});
 				var size = 40;				
 				var geometry = new THREE.CylinderGeometry(size, size, 1, 32);
-				var center = new THREE.Mesh(geometry, geometryBlue);
+				var center = new THREE.Mesh(geometry, materialBlue);
 				this.scene.add(center);
 			};
 			GamePlay.prototype.initPlayer = function () {
@@ -325,17 +401,16 @@
 				this.scene.add(pObject);
 			};
 			GamePlay.prototype.initBots = function () {
-				for (var i = 0, flag = 0; i < this.dictionary.length; ++i, flag = 1 - flag) {
+				for (var i = 0; i < this.dictionary.length; ++i) {
 					var word = dictionary[i];
 
 					var bot = new Bot(word);
-					var bObject = bot.object;
+					// TODO:
+					bot.hash = word + i;
 					this.bots.push(bot);
 
-					// TODO:
-					var w = this.buttleFieldWidthTrue;
-					var h = this.buttleFieldHeightTrue;
-
+					var w = this.buttleFieldWidthUsed;
+					var h = this.buttleFieldHeightUsed;
 					var radius = this.player.attackField.radius
 					var x = Math.max(Math.floor(Math.random() * w - w * 0.5));
 					var z = Math.floor(Math.random() * h - h * 0.5);
@@ -343,10 +418,11 @@
 					for (var j = 0; j < coord.length; ++j) {
 						coord[j] = (coord[j] <= 0) ? Math.min(-radius, coord[j]) : Math.max(radius, coord[j]);
 					}
+
+					var bObject = bot.object;
 					bObject.position.x = coord[0];
 					bObject.position.y = 10;
 					bObject.position.z = coord[1];
-
 					this.scene.add(bObject);
 				}
 			};		
@@ -370,8 +446,7 @@
 						mp.velocity.x -= 400.0 * delta;
 					if (mp.moveRight) 
 						mp.velocity.x += 400.0 * delta;
-
-					
+	
 					// var down = new THREE.Vector3(0, -1, 0);
 					// this.raycaster.set(pObject.position, down);
 					// this.raycaster.ray.origin.y -= 10; // players foot
@@ -396,26 +471,33 @@
 					// this.cameraTopDown.translateY(mp.velocity.y * delta);
 					// this.cameraTopDown.translateZ(mp.velocity.z * delta);
 
+					// TODO: destroy bots properly
 					// bots animation
+					var bots = [];
 					for (var i = 0, flag = 0; i < this.bots.length; ++i, flag = 1 - flag) {
 						var bot = this.bots[i];
-						var bObject = bot.object;
+						if (bot.isDead) {
+							this.botsInAttackField.remove(bot.hash);
+							continue;
+						}
 
+						var bObject = bot.object;
 						var x = pObject.position.x - bObject.position.x;
 						var y = 0;
-						var z = pObject.position.z - bObject.position.z
+						var z = pObject.position.z - bObject.position.z;
 
 						var toPlayerFromBot = new THREE.Vector3(x, y, z);
 						toPlayerFromBot.normalize();
 						
 						var toBotFromPlayer = new THREE.Vector3(-x, -y, -z);
-						toBotFromPlayer.normalize();
-
-						this.raycaster.set(pObject.position, toBotFromPlayer);
-						var intersections = this.raycaster.intersectObjects([bObject]);
+						// toBotFromPlayer.normalize();
 						
+						// this.raycaster.set(pObject.position, toBotFromPlayer);
+						// var intersections = this.raycaster.intersectObjects([bObject]);
+
 						var target = toPlayerFromBot.clone();
-					    if (intersections.length > 0 && intersections[0].distance > this.player.attackField.radius) { 
+					    // if (intersections.length > 0 && intersections[0].distance > this.player.attackField.radius) { 
+					    if (toBotFromPlayer.length() > this.player.attackField.radius) { 
 					    	var up = new THREE.Vector3(0, 1, 0);
 					    	var toBotFromCenter = bObject.position.clone();
 					    	if (flag) {
@@ -424,19 +506,60 @@
 								target.crossVectors(up, toBotFromCenter);
 					    	}
 							target.normalize();
-					    } 
+
+							this.botsInAttackField.remove(bot.hash);
+					    } else {
+					    	this.botsInAttackField.insert(bot.hash, bot);
+					    }
 
 						bObject.translateX(target.x * 10.0 * delta);
 						bObject.translateY(target.y * 10.0 * delta);
 						bObject.translateZ(target.z * 10.0 * delta);
+
+						bots.push(bot);
 					}
+					this.bots = bots;
+
+					// TODO: destroy rockets properly
+					// rockets animation
+					var rockets = [];
+					for (var i = 0; i < this.rockets.length; ++i) {
+						var rocket = this.rockets[i];
+						var bot = rocket.target;
+
+						var rObject = rocket.object;
+						var bObject = bot.object;
+						var x = bObject.position.x - rObject.position.x;
+						var y = 0;
+						var z = bObject.position.z - rObject.position.z;
+						var toBotFromRocket = new THREE.Vector3(x, y, z);
+						if (toBotFromRocket.length() > 0.5) {
+ 							toBotFromRocket.normalize();
+
+ 							var target = toBotFromRocket.clone();
+ 							rObject.translateX(target.x * 50.0 * delta);
+							rObject.translateY(target.y * 50.0 * delta);
+							rObject.translateZ(target.z * 50.0 * delta);
+
+							rockets.push(rocket);
+						} else {
+							bot.isDead = true;
+							this.botsInAttackField.remove(bot.hash);
+
+							this.scene.remove(rObject);
+							this.scene.remove(bObject);
+						}
+					}
+					this.rockets = rockets;
+
 					this.prevTime = time;
 				}
 				this.renderer.render(this.scene, this.cameraTopDown);
 			};
 
 			var dictionary = ["car", "book", "developer", "sidewalk", "festival", "problem", "manager", "communication", "car", "book", "developer", "sidewalk", "festival", "problem", "manager", "communication", "car", "book", "developer", "sidewalk", "festival", "problem", "manager", "communication", "car", "book", "developer", "sidewalk", "festival", "problem", "manager", "communication", "car", "book", "developer", "sidewalk", "festival", "problem", "manager", "communication", "car", "book", "developer", "sidewalk", "festival", "problem", "manager", "communication", "car", "book", "developer", "sidewalk", "festival", "problem", "manager", "communication", "car", "book", "developer", "sidewalk", "festival", "problem", "manager", "communication", "car", "book", "developer", "sidewalk", "festival", "problem", "manager", "communication", "car", "book", "developer", "sidewalk", "festival", "problem", "manager", "communication"];
-			console.log("Dictionary length: " + dictionary.length);
+			// console.log("Dictionary length: ");
+			// console.log(dictionary.length);
 			var gp = new GamePlay(dictionary);
 		</script>
 	</body>
