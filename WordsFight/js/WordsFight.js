@@ -84,7 +84,7 @@ Helper.positionImageText = function(textOptions, positionOptions) {
 };
 Helper.keyToCharMap = (function () {
 	var map = new HashTable();
-	var keyCodesChars = ["a", 65,"b", 66,"c", 67,"d", 68,"e", 69,"f", 70,"g", 71,"h", 72,"i", 73,"j", 74,"k", 75,"l", 76,"m", 77,"n", 78,"o", 79,"p", 80,"q", 81,"r", 82,"s", 83,"t", 84,"u", 85,"v", 86,"w", 87,"x", 88,"y", 89,"z", 90];
+	var keyCodesChars = ["a", 65,"b", 66,"c", 67,"d", 68,"e", 69,"f", 70,"g", 71,"h", 72,"i", 73,"j", 74,"k", 75,"l", 76,"m", 77,"n", 78,"o", 79,"p", 80,"q", 81,"r", 82,"s", 83,"t", 84,"u", 85,"v", 86,"w", 87,"x", 88,"y", 89,"z", 90, " ", 32, "'", 222];
 	for (var i = 1; i < keyCodesChars.length; i += 2) {
 		map.insert(keyCodesChars[i], keyCodesChars[i - 1]);
 	}
@@ -124,6 +124,7 @@ var Player = function (level, name) {
 	var geometry = new THREE.CylinderGeometry(radius, radius, 1, 32);
 	var material = new THREE.MeshBasicMaterial({ 
 		color: 0xff0000,
+		// color: 0xF70000,
 		transparent: true, 
 		opacity: 0.2
 	});
@@ -565,8 +566,7 @@ GamePlay.prototype.initButtleField = function () {
 	this.scene.add(buttleFieldBackground);
 
 	// center
-	var materialBlue = new THREE.MeshBasicMaterial({ 
-		// color: 0x353E90,
+	var materialBlue = new THREE.MeshBasicMaterial({		
 		color: 0xeeeeee
 	});
 	var size = 40;				
@@ -610,16 +610,16 @@ GamePlay.prototype.initBots = function () {
 		bObject.position.z = z;
 		this.scene.add(bObject);
 	}
-};		
+};
+
+// TODO:
+GamePlay.prototype.destroy = function () {
+};
 
 // animation
 
 GamePlay.prototype.animate = function () {
-	var that = this;
-	function request () {
-		that.requestedAnimationFrameId = window.requestAnimationFrame(that.animate.bind(that));
-	};
-
+	this.requestedAnimationFrameId = window.requestAnimationFrame(this.animate.bind(this));
 	this.render();
 	if (!this.isGamePlayVisible && this.requestedAnimationFrameId) {
 		this.isGamePlayVisible = true;
@@ -630,11 +630,10 @@ GamePlay.prototype.animate = function () {
 			score: this.player.score
 		});
 	} 
-	request();
 };
 GamePlay.prototype.render = function () {
 	if (!this.player || this.player.isDead()) {
-		if (this.requestAnimationFrame) {
+		if (this.requestedAnimationFrameId) {
 			window.cancelAnimationFrame(this.requestedAnimationFrameId);
 			this.requestedAnimationFrameId = 0;
 		}
@@ -645,6 +644,11 @@ GamePlay.prototype.render = function () {
 			score: this.player.score
 		});
 	} else if (this.bots.length < 1) {
+		if (this.requestedAnimationFrameId) {
+			window.cancelAnimationFrame(this.requestedAnimationFrameId);
+			this.requestedAnimationFrameId = 0;
+		}
+
 		this.settings.onLevelComplete({
 			hpTotal: this.player.hpTotal,
 			hp: this.player.hp,
