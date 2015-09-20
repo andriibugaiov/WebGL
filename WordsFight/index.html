@@ -19,10 +19,14 @@
 
 			var settings = {
 				playerName: "this_is_my_username",
-				difficultyLevel: 0,
+				difficultyLevel: 0, // 0, 1, 2
 				wordsPairs: wordsPairs,
 				onGameOver: function (progress) {
 					console.log("Game Over!");
+					console.log(progress);
+				},
+				onLevelStart: function (progress) {
+					console.log("Started!");
 					console.log(progress);
 				},
 				onLevelComplete: function (progress) {
